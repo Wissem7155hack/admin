@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
-import { Calendar, ChevronDown, MoreVertical, Plus, Sparkles, Volume2, Upload, Globe } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { MoreVertical, Plus, Globe } from 'lucide-react';
 import EmptyState from '../EmptyState';
 import SlideOverDrawer from '../common/SlideOverDrawer';
 import { AutomatedOffer, OneTimeOffer } from '../../types';
+import { supabase } from '../../lib/supabaseClient';
+
+const SUPABASE_STORAGE_URL = 'https://jndcmymcnivessmvzpzc.supabase.co/storage/v1/object/public/offer-media/automated';
 
 const INITIAL_AUTOMATED_OFFERS: AutomatedOffer[] = [
   {
@@ -11,8 +14,8 @@ const INITIAL_AUTOMATED_OFFERS: AutomatedOffer[] = [
     subtitle: 'Start the new year with a fresh look!',
     dateWindow: 'Jan 1 - 4, 6:00 AM',
     bannerTitle: 'HAPPY NEW YEAR 2025',
-    bannerImage: '/images/automated_offers2Fwebapp2Fnew_year.webp',
-    active: false,
+    bannerImage: `${SUPABASE_STORAGE_URL}/new_years.webp`,
+    active: true,
     discountMode: 'Percentage',
     discountValue: 15,
     includeRecentCart: true,
@@ -26,8 +29,8 @@ const INITIAL_AUTOMATED_OFFERS: AutomatedOffer[] = [
     subtitle: 'Festive season glowing specials!',
     dateWindow: 'Dec 20 - 26, 6:00 AM',
     bannerTitle: 'MERRY CHRISTMAS',
-    bannerImage: '/images/automated_offers2Fwebapp2Fchristmas.webp',
-    active: false,
+    bannerImage: `${SUPABASE_STORAGE_URL}/christmas.webp`,
+    active: true,
     discountMode: 'Percentage',
     discountValue: 20,
     includeRecentCart: true,
@@ -41,8 +44,8 @@ const INITIAL_AUTOMATED_OFFERS: AutomatedOffer[] = [
     subtitle: "Love your skin this Valentine's Day",
     dateWindow: 'Feb 10 - 15, 6:00 AM',
     bannerTitle: "VALENTINE'S SPECIAL",
-    bannerImage: '/images/automated_offers2Fwebapp2Fvalentine.webp',
-    active: false,
+    bannerImage: `${SUPABASE_STORAGE_URL}/valentines.webp`,
+    active: true,
     discountMode: 'Percentage',
     discountValue: 10,
     includeRecentCart: true,
@@ -56,8 +59,8 @@ const INITIAL_AUTOMATED_OFFERS: AutomatedOffer[] = [
     subtitle: 'Spring into fresh skin & wellness',
     dateWindow: 'Apr 10 - 15, 6:00 AM',
     bannerTitle: 'EASTER SPECIAL',
-    bannerImage: '/images/automated_offers2Fwebapp2Feaster.webp',
-    active: false,
+    bannerImage: `${SUPABASE_STORAGE_URL}/easter.webp`,
+    active: true,
     discountMode: 'Percentage',
     discountValue: 15,
     includeRecentCart: true,
@@ -71,8 +74,8 @@ const INITIAL_AUTOMATED_OFFERS: AutomatedOffer[] = [
     subtitle: 'Spooktacular beauty perks & treats',
     dateWindow: 'Oct 28 - 31, 6:00 AM',
     bannerTitle: 'HALLOWEEN GLOW',
-    bannerImage: '/images/automated_offers2Fwebapp2Fhalloween.webp',
-    active: false,
+    bannerImage: `${SUPABASE_STORAGE_URL}/halloween.webp`,
+    active: true,
     discountMode: 'Percentage',
     discountValue: 10,
     includeRecentCart: true,
@@ -86,8 +89,8 @@ const INITIAL_AUTOMATED_OFFERS: AutomatedOffer[] = [
     subtitle: 'A special birthday gift for your glow',
     dateWindow: 'Sent on client birthday',
     bannerTitle: 'HAPPY BIRTHDAY',
-    bannerImage: '/images/happy birthday card.png',
-    active: false,
+    bannerImage: `${SUPABASE_STORAGE_URL}/birthday_special.png`,
+    active: true,
     discountMode: 'Percentage',
     discountValue: 25,
     includeRecentCart: true,
@@ -101,8 +104,8 @@ const INITIAL_AUTOMATED_OFFERS: AutomatedOffer[] = [
     subtitle: 'Celebrating 1 year with us!',
     dateWindow: 'Sent on client 1-year anniversary',
     bannerTitle: 'ANNIVERSARY GIFT',
-    bannerImage: '/images/automated_offers2Fwebapp2F1st.webp',
-    active: false,
+    bannerImage: `${SUPABASE_STORAGE_URL}/client_anniversary.webp`,
+    active: true,
     discountMode: 'Percentage',
     discountValue: 20,
     includeRecentCart: true,
@@ -116,8 +119,8 @@ const INITIAL_AUTOMATED_OFFERS: AutomatedOffer[] = [
     subtitle: 'Your lucky charm for radiant skin',
     dateWindow: 'Mar 15 - 18, 6:00 AM',
     bannerTitle: "LUCKY BEAUTY",
-    bannerImage: '/images/automated_offers2Fwebapp2Fpatrick.webp',
-    active: false,
+    bannerImage: `${SUPABASE_STORAGE_URL}/st_patricks.webp`,
+    active: true,
     discountMode: 'Percentage',
     discountValue: 15,
     includeRecentCart: true,
@@ -131,8 +134,8 @@ const INITIAL_AUTOMATED_OFFERS: AutomatedOffer[] = [
     subtitle: 'Our biggest savings of the entire year',
     dateWindow: 'Nov 24 - 30, 6:00 AM',
     bannerTitle: 'BLACK FRIDAY VIP',
-    bannerImage: '/images/automated_offers2Fwebapp2Fblack_friday.webp',
-    active: false,
+    bannerImage: `${SUPABASE_STORAGE_URL}/black_friday.webp`,
+    active: true,
     discountMode: 'Percentage',
     discountValue: 30,
     includeRecentCart: true,
@@ -142,7 +145,11 @@ const INITIAL_AUTOMATED_OFFERS: AutomatedOffer[] = [
   },
 ];
 
-export default function OffersTab() {
+interface OffersTabProps {
+  clinicId?: string;
+}
+
+export default function OffersTab({ clinicId }: OffersTabProps) {
   const [offersMode, setOffersMode] = useState<'One-Time offers' | 'Automated Offers'>('Automated Offers');
   const [automatedOffers, setAutomatedOffers] = useState<AutomatedOffer[]>(INITIAL_AUTOMATED_OFFERS);
   const [selectedOffer, setSelectedOffer] = useState<AutomatedOffer>(INITIAL_AUTOMATED_OFFERS[0]);
@@ -159,16 +166,80 @@ export default function OffersTab() {
   const [oneTimeOffers, setOneTimeOffers] = useState<OneTimeOffer[]>([]);
   const [openOneTimeDrawer, setOpenOneTimeDrawer] = useState(false);
 
-  // One-time offer form fields matching Photo 4 pixel-perfect
+  // One-time offer form fields
   const [visibility, setVisibility] = useState<'Public' | 'Private'>('Private');
-  const [startDate, setStartDate] = useState('');
+  const [startDate] = useState('');
   const [expiresIn, setExpiresIn] = useState(0);
   const [offerMsg, setOfferMsg] = useState('');
   const [offerHeadline, setOfferHeadline] = useState('');
-  const [bannerColor, setBannerColor] = useState('#EC4899');
+  const [bannerColor] = useState('#EC4899');
   const [discountType, setDiscountType] = useState<'Percentage' | 'Set $ amount'>('Percentage');
   const [discountVal, setDiscountVal] = useState(0);
-  const [productScope, setProductScope] = useState<'Includes' | 'Excludes'>('Includes');
+  const [productScope] = useState<'Includes' | 'Excludes'>('Includes');
+
+  // Fetch offers from Supabase
+  const loadOffers = useCallback(async () => {
+    if (!clinicId) return;
+    try {
+      const { data, error } = await supabase
+        .from('offers')
+        .select('*')
+        .eq('clinic_id', clinicId);
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        // Map automated offers from DB
+        const dbAutomated = data
+          .filter((o) => o.type === 'automated')
+          .map((o) => ({
+            id: o.id,
+            occasion: o.occasion || 'Event',
+            subtitle: o.subtitle || '',
+            dateWindow: o.date_window || '',
+            bannerTitle: o.banner_title || o.title || '',
+            bannerImage: o.banner_image_url || o.preview_image_url || '',
+            active: !!o.is_active,
+            discountMode: (o.discount_type as any) || 'Percentage',
+            discountValue: Number(o.discount_value) || 15,
+            includeRecentCart: o.include_recent_cart !== false,
+            includeSimilarBrowse: o.include_similar_browse !== false,
+            targetMode: (o.target_mode as any) || 'Includes',
+            targetProducts: o.target_products || [],
+          }));
+
+        if (dbAutomated.length > 0) {
+          setAutomatedOffers(dbAutomated);
+          setSelectedOffer(dbAutomated[0]);
+        }
+
+        // Map one-time offers
+        const dbOneTime = data
+          .filter((o) => o.type === 'one_time')
+          .map((o) => ({
+            id: o.id,
+            visibility: (o.visibility as any) || 'Private',
+            startDate: o.start_date ? o.start_date.split('T')[0] : '',
+            expiresInDays: 7,
+            headline: o.title || 'Special Promotion',
+            message: o.subtitle || '',
+            bannerBgColor: '#EC4899',
+            discountMode: (o.discount_type as any) || 'Percentage',
+            discountValue: Number(o.discount_value) || 0,
+            targetMode: (o.target_mode as any) || 'Includes',
+            targetProducts: o.target_products || [],
+          }));
+        setOneTimeOffers(dbOneTime);
+      }
+    } catch (err) {
+      console.warn('Could not fetch offers from Supabase, using defaults:', err);
+    } finally {
+    }
+  }, [clinicId]);
+
+  useEffect(() => {
+    loadOffers();
+  }, [loadOffers]);
 
   const handleOpenEdit = (offer: AutomatedOffer) => {
     setSelectedOffer(offer);
@@ -180,44 +251,70 @@ export default function OffersTab() {
     setEditDrawerOpen(true);
   };
 
-  const handleToggleActiveDirect = (id: string, e: React.MouseEvent) => {
+  const handleToggleActiveDirect = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    const target = automatedOffers.find((o) => o.id === id);
+    if (!target) return;
+    const nextState = !target.active;
+
+    // Optimistic update
     setAutomatedOffers((prev) =>
-      prev.map((o) => (o.id === id ? { ...o, active: !o.active } : o))
+      prev.map((o) => (o.id === id ? { ...o, active: nextState } : o))
     );
+    if (selectedOffer.id === id) {
+      setSelectedOffer((prev) => ({ ...prev, active: nextState }));
+    }
+
+    // Sync to Supabase
+    try {
+      await supabase
+        .from('offers')
+        .update({ is_active: nextState, updated_at: new Date().toISOString() })
+        .eq('id', id);
+    } catch (err) {
+      console.warn('Failed to sync offer status to Supabase:', err);
+    }
   };
 
-  const handleSaveAutomated = (e: React.FormEvent) => {
+  const handleSaveAutomated = async (e: React.FormEvent) => {
     e.preventDefault();
-    setAutomatedOffers((prev) =>
-      prev.map((o) =>
-        o.id === selectedOffer.id
-          ? {
-              ...o,
-              active: editActive,
-              discountMode: editDiscountMode,
-              discountValue: editDiscountVal,
-              includeRecentCart: editIncludeCart,
-              includeSimilarBrowse: editIncludeSimilar,
-            }
-          : o
-      )
-    );
-    setSelectedOffer((prev) => ({
-      ...prev,
+    const updatedOffer: Partial<AutomatedOffer> = {
       active: editActive,
       discountMode: editDiscountMode,
       discountValue: editDiscountVal,
       includeRecentCart: editIncludeCart,
       includeSimilarBrowse: editIncludeSimilar,
-    }));
+    };
+
+    setAutomatedOffers((prev) =>
+      prev.map((o) => (o.id === selectedOffer.id ? { ...o, ...updatedOffer } : o))
+    );
+    setSelectedOffer((prev) => ({ ...prev, ...updatedOffer }));
     setEditDrawerOpen(false);
+
+    // Sync to Supabase
+    try {
+      await supabase
+        .from('offers')
+        .update({
+          is_active: editActive,
+          discount_type: editDiscountMode,
+          discount_value: editDiscountVal,
+          include_recent_cart: editIncludeCart,
+          include_similar_browse: editIncludeSimilar,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', selectedOffer.id);
+    } catch (err) {
+      console.warn('Failed to update offer in Supabase:', err);
+    }
   };
 
-  const handleCreateOneTime = (e: React.FormEvent) => {
+  const handleCreateOneTime = async (e: React.FormEvent) => {
     e.preventDefault();
+    const tempId = 'oto-' + Date.now();
     const newOffer: OneTimeOffer = {
-      id: 'oto-' + Date.now(),
+      id: tempId,
       visibility,
       startDate: startDate || new Date().toISOString().split('T')[0],
       expiresInDays: expiresIn || 7,
@@ -229,8 +326,40 @@ export default function OffersTab() {
       targetMode: productScope,
       targetProducts: [],
     };
+
     setOneTimeOffers([newOffer, ...oneTimeOffers]);
     setOpenOneTimeDrawer(false);
+
+    // Persist to Supabase if clinicId is present
+    if (clinicId) {
+      try {
+        const { data } = await supabase
+          .from('offers')
+          .insert([
+            {
+              clinic_id: clinicId,
+              type: 'one_time',
+              title: newOffer.headline,
+              subtitle: newOffer.message,
+              visibility: newOffer.visibility,
+              start_date: newOffer.startDate,
+              discount_type: newOffer.discountMode,
+              discount_value: newOffer.discountValue,
+              target_mode: newOffer.targetMode,
+              is_active: true,
+            },
+          ])
+          .select();
+        if (data && data[0]) {
+          setOneTimeOffers((prev) =>
+            prev.map((o) => (o.id === tempId ? { ...o, id: data[0].id } : o))
+          );
+        }
+      } catch (err) {
+        console.warn('Failed to insert one-time offer to Supabase:', err);
+      }
+    }
+
     // Reset
     setOfferMsg('');
     setOfferHeadline('');
@@ -281,7 +410,7 @@ export default function OffersTab() {
               </div>
               <div className="flex-1 min-w-0">
                 <h4 className="text-xs font-bold text-slate-900 truncate">
-                  {selectedOffer.id === 'new-years' ? 'New Year, New YOU!' : selectedOffer.bannerTitle}
+                  {selectedOffer.occasion === 'New Years' ? 'New Year, New YOU!' : selectedOffer.bannerTitle}
                 </h4>
                 <p className="text-[11px] text-slate-500 truncate">
                   We've made you a special gift... Tap to open!
@@ -300,7 +429,7 @@ export default function OffersTab() {
               <div className="w-full h-full bg-white rounded-[32px] overflow-hidden flex flex-col pt-8 px-4 pb-4">
                 <div className="text-center my-3">
                   <h3 className="text-sm font-bold text-slate-900 tracking-tight">
-                    {selectedOffer.id === 'new-years' ? 'New Year, new YOU!' : selectedOffer.bannerTitle}
+                    {selectedOffer.occasion === 'New Years' ? 'New Year, new YOU!' : selectedOffer.bannerTitle}
                   </h3>
                   <p className="text-[11px] text-slate-500 mt-1">
                     {selectedOffer.subtitle}
@@ -312,7 +441,11 @@ export default function OffersTab() {
                   <img
                     src={selectedOffer.bannerImage}
                     alt={selectedOffer.occasion}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover transition-opacity duration-300"
+                    onError={(e) => {
+                      // Fallback if network issue
+                      (e.target as HTMLImageElement).src = '/images/automated_offers2Fwebapp2Fnew_year.webp';
+                    }}
                   />
                 </div>
               </div>
@@ -349,6 +482,9 @@ export default function OffersTab() {
                         src={offer.bannerImage}
                         alt={offer.occasion}
                         className="w-10 h-8 rounded-lg object-cover bg-slate-900 flex-shrink-0 shadow-2xs border border-slate-200"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = '/images/automated_offers2Fwebapp2Fnew_year.webp';
+                        }}
                       />
                       <span className="text-xs font-semibold text-slate-900 truncate">
                         {offer.occasion}
@@ -418,14 +554,21 @@ export default function OffersTab() {
                     style={{ backgroundColor: oto.bannerBgColor }}
                   >
                     <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider opacity-90">{oto.visibility}</span>
-                      <h4 className="text-sm font-bold">{oto.headline}</h4>
+                      <span className="text-[10px] font-bold uppercase tracking-wider bg-black/20 px-2 py-0.5 rounded">
+                        {oto.visibility}
+                      </span>
+                      <h4 className="text-sm font-bold mt-1">{oto.headline}</h4>
                     </div>
-                    <span className="text-lg font-extrabold">{oto.discountValue}%</span>
+                    <div className="text-right">
+                      <span className="text-lg font-black">{oto.discountValue}% OFF</span>
+                    </div>
                   </div>
-                  <div className="p-4 space-y-2 text-xs text-slate-600">
-                    <p>{oto.message}</p>
-                    <p className="text-[11px] text-slate-400">Expires in {oto.expiresInDays} days</p>
+                  <div className="p-4">
+                    <p className="text-xs text-slate-600 line-clamp-2">{oto.message || 'Limited-time clinic special promotion.'}</p>
+                    <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
+                      <span>Starts {oto.startDate || 'Now'}</span>
+                      <span>Expires in {oto.expiresInDays}d</span>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -434,12 +577,12 @@ export default function OffersTab() {
         </div>
       )}
 
-      {/* EDIT DRAWER FOR AUTOMATED OFFER (Using SlideOverDrawer) */}
+      {/* EDIT AUTOMATED OFFER DRAWER */}
       <SlideOverDrawer
         isOpen={editDrawerOpen}
         onClose={() => setEditDrawerOpen(false)}
-        title={`Edit ${selectedOffer.occasion} Offer`}
-        maxWidth="max-w-[480px]"
+        title={selectedOffer.occasion}
+        maxWidth="max-w-[460px]"
         footer={
           <>
             <button
@@ -454,149 +597,100 @@ export default function OffersTab() {
               onClick={handleSaveAutomated}
               className="px-6 py-2.5 bg-pink-500 hover:bg-pink-600 text-white rounded-full text-xs font-semibold shadow-sm shadow-pink-200 transition-all hover:shadow-md"
             >
-              Save Offer Settings
+              Save offer
             </button>
           </>
         }
       >
-        <div className="space-y-5 text-xs">
-          {/* Hero Banner Preview */}
-          <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-xs relative aspect-[16/9] bg-slate-900">
-            <img
-              src={selectedOffer.bannerImage}
-              alt={selectedOffer.occasion}
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent flex items-end p-4">
-              <div>
-                <span className="text-[10px] font-bold text-pink-400 uppercase tracking-wider">
-                  Holiday Event
-                </span>
-                <h4 className="text-sm font-bold text-white">{selectedOffer.bannerTitle}</h4>
-                <p className="text-[11px] text-slate-300">{selectedOffer.dateWindow}</p>
-              </div>
-            </div>
-          </div>
-
+        <form onSubmit={handleSaveAutomated} className="space-y-6 text-xs">
           {/* Active Switch */}
-          <div className="flex items-center justify-between p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
+          <div className="flex items-center justify-between bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
             <div>
-              <p className="font-bold text-slate-900">Offer Status</p>
-              <p className="text-[11px] text-slate-400">Activate or deactivate this seasonal campaign.</p>
+              <p className="font-semibold text-slate-900">Offer Status</p>
+              <p className="text-[11px] text-slate-500">Enable this automated holiday campaign</p>
             </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={editActive}
-                onChange={(e) => setEditActive(e.target.checked)}
-                className="sr-only peer"
+            <button
+              type="button"
+              onClick={() => setEditActive(!editActive)}
+              className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                editActive ? 'bg-pink-500' : 'bg-slate-200'
+              }`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                  editActive ? 'translate-x-5' : 'translate-x-0'
+                }`}
               />
-              <div className="w-10 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-pink-500"></div>
-            </label>
+            </button>
           </div>
 
-          {/* Discount Engine */}
+          {/* Discount Mode */}
           <div>
-            <label className="block font-bold text-slate-700 mb-1.5">Discount Engine</label>
-            <div className="flex items-center gap-2">
-              <div className="flex bg-slate-100 p-0.5 rounded-xl text-xs font-semibold">
+            <label className="block text-xs font-medium text-slate-700 mb-1.5">Discount Type</label>
+            <div className="grid grid-cols-2 gap-2 bg-slate-100 p-1 rounded-xl">
+              {(['Percentage', 'Set $ amount'] as const).map((m) => (
                 <button
+                  key={m}
                   type="button"
-                  onClick={() => setEditDiscountMode('Percentage')}
-                  className={`px-3 py-1.5 rounded-lg ${
-                    editDiscountMode === 'Percentage' ? 'bg-white shadow-2xs text-slate-900' : 'text-slate-500'
+                  onClick={() => setEditDiscountMode(m)}
+                  className={`py-2 text-xs font-semibold rounded-lg transition-all ${
+                    editDiscountMode === m
+                      ? 'bg-white text-slate-900 shadow-xs'
+                      : 'text-slate-500 hover:text-slate-800'
                   }`}
                 >
-                  Percentage
+                  {m}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setEditDiscountMode('Set $ amount')}
-                  className={`px-3 py-1.5 rounded-lg ${
-                    editDiscountMode === 'Set $ amount' ? 'bg-white shadow-2xs text-slate-900' : 'text-slate-500'
-                  }`}
-                >
-                  Set $ amount
-                </button>
-              </div>
-
-              <div className="relative flex-1">
-                <input
-                  type="number"
-                  value={editDiscountVal}
-                  onChange={(e) => setEditDiscountVal(Number(e.target.value))}
-                  className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 text-right pr-7 focus:bg-white focus:outline-none focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500"
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 font-bold text-slate-400">
-                  {editDiscountMode === 'Percentage' ? '%' : '$'}
-                </span>
-              </div>
+              ))}
             </div>
           </div>
 
-          {/* AI Algorithmic Targeting */}
-          <div className="p-4 bg-purple-50/50 border border-purple-100 rounded-2xl space-y-3">
-            <div className="flex items-center gap-1.5 text-purple-900 font-bold">
-              <Sparkles size={14} className="text-purple-600" />
-              <span>AI Algorithmic Targeting</span>
+          {/* Discount Value */}
+          <div>
+            <label className="block text-xs font-medium text-slate-700 mb-1.5">Discount Amount</label>
+            <div className="relative">
+              <input
+                type="number"
+                value={editDiscountVal}
+                onChange={(e) => setEditDiscountVal(Number(e.target.value))}
+                className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500"
+              />
+              <span className="absolute right-3.5 top-2.5 text-xs text-slate-400 font-semibold">
+                {editDiscountMode === 'Percentage' ? '%' : '$'}
+              </span>
             </div>
+          </div>
 
-            <label className="flex items-start gap-2.5 cursor-pointer">
+          {/* Targeting Toggles */}
+          <div className="space-y-3 pt-2">
+            <label className="flex items-center gap-3 cursor-pointer">
               <input
                 type="checkbox"
                 checked={editIncludeCart}
                 onChange={(e) => setEditIncludeCart(e.target.checked)}
-                className="mt-0.5 rounded border-slate-300 text-pink-600 focus:ring-pink-500"
+                className="rounded text-pink-500 focus:ring-pink-500/20"
               />
-              <span className="text-[11px] text-slate-600 leading-snug">
-                Include products recently added to cart or browsed, but never purchased
-              </span>
+              <span className="text-xs text-slate-700 font-medium">Include items recently left in cart</span>
             </label>
 
-            <label className="flex items-start gap-2.5 cursor-pointer">
+            <label className="flex items-center gap-3 cursor-pointer">
               <input
                 type="checkbox"
                 checked={editIncludeSimilar}
                 onChange={(e) => setEditIncludeSimilar(e.target.checked)}
-                className="mt-0.5 rounded border-slate-300 text-pink-600 focus:ring-pink-500"
+                className="rounded text-pink-500 focus:ring-pink-500/20"
               />
-              <span className="text-[11px] text-slate-600 leading-snug">
-                Include treatments most similar to previous purchases and visit history
-              </span>
+              <span className="text-xs text-slate-700 font-medium">Include similar browse recommendations</span>
             </label>
           </div>
-
-          {/* Voice Note Boost Banner */}
-          <div className="p-4 bg-pink-50/70 border border-pink-100 rounded-2xl space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5 text-pink-900 font-bold">
-                <Volume2 size={14} className="text-pink-600" />
-                <span>Audio Voice Note</span>
-              </div>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-pink-200/80 text-pink-800">
-                +158% conversion boost
-              </span>
-            </div>
-            <p className="text-[11px] text-slate-600">
-              Add an authentic voice greeting from your doctor or aesthetician to play when patients tap this offer.
-            </p>
-            <button
-              type="button"
-              onClick={() => alert('Audio upload triggered')}
-              className="w-full py-2.5 border border-dashed border-pink-300 rounded-xl bg-white text-xs font-semibold text-pink-600 hover:bg-pink-50 transition-colors flex items-center justify-center gap-1.5"
-            >
-              <Upload size={14} />
-              <span>Upload greeting audio (.mp3, .wav)</span>
-            </button>
-          </div>
-        </div>
+        </form>
       </SlideOverDrawer>
 
-      {/* CREATE ONE-TIME OFFER DRAWER (Exact Match to Photo 4!) */}
+      {/* CREATE ONE-TIME OFFER DRAWER */}
       <SlideOverDrawer
         isOpen={openOneTimeDrawer}
         onClose={() => setOpenOneTimeDrawer(false)}
-        title="Create a one-time offer"
+        title="Create one-time offer"
         maxWidth="max-w-[480px]"
         footer={
           <>
@@ -612,26 +706,23 @@ export default function OffersTab() {
               onClick={handleCreateOneTime}
               className="px-6 py-2.5 bg-pink-500 hover:bg-pink-600 text-white rounded-full text-xs font-semibold shadow-sm shadow-pink-200 transition-all hover:shadow-md"
             >
-              Create offer
+              Publish offer
             </button>
           </>
         }
       >
-        <div className="space-y-5 text-xs">
-          {/* Visibility */}
+        <form onSubmit={handleCreateOneTime} className="space-y-4 text-xs">
           <div>
-            <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wide mb-2">
-              Visibility
-            </label>
-            <div className="flex bg-slate-100 p-1 rounded-xl">
-              {(['Public', 'Private'] as const).map((v) => (
+            <label className="block text-xs font-medium text-slate-700 mb-1">Visibility</label>
+            <div className="grid grid-cols-2 gap-2 bg-slate-100 p-1 rounded-xl">
+              {(['Private', 'Public'] as const).map((v) => (
                 <button
                   key={v}
                   type="button"
                   onClick={() => setVisibility(v)}
-                  className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+                  className={`py-2 text-xs font-semibold rounded-lg transition-all ${
                     visibility === v
-                      ? 'bg-white shadow-xs text-slate-900'
+                      ? 'bg-white text-slate-900 shadow-xs'
                       : 'text-slate-500 hover:text-slate-800'
                   }`}
                 >
@@ -641,179 +732,54 @@ export default function OffersTab() {
             </div>
           </div>
 
-          {/* Date Row */}
           <div>
-            <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wide mb-2">
-              Date
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Start date</label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    placeholder="Select date"
-                    className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500 pr-9"
-                  />
-                  <Calendar size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Expires in</label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    min={0}
-                    value={expiresIn === 0 ? '' : expiresIn}
-                    onChange={(e) => setExpiresIn(Number(e.target.value))}
-                    placeholder="0"
-                    className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500 pr-12"
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-medium">
-                    days
-                  </span>
-                </div>
-              </div>
-            </div>
+            <label className="block text-xs font-medium text-slate-700 mb-1">Headline</label>
+            <input
+              type="text"
+              required
+              value={offerHeadline}
+              onChange={(e) => setOfferHeadline(e.target.value)}
+              placeholder="e.g. Flash Summer Glow Discount"
+              className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500"
+            />
           </div>
 
-          {/* Promotion reward message */}
-          <div className="space-y-3">
-            <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wide">
-              Promotion reward message
-            </label>
-
-            <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Promotion offer message</label>
-              <input
-                type="text"
-                value={offerMsg}
-                onChange={(e) => setOfferMsg(e.target.value)}
-                placeholder="Enter promotion offer message"
-                className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Promotion offer headline</label>
-              <input
-                type="text"
-                maxLength={100}
-                value={offerHeadline}
-                onChange={(e) => setOfferHeadline(e.target.value)}
-                placeholder="Enter promotion offer headline"
-                className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500"
-              />
-              <div className="text-right text-[10px] text-slate-400 mt-1 font-medium">
-                {offerHeadline.length}/100
-              </div>
-            </div>
-          </div>
-
-          {/* Banner customization */}
           <div>
-            <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wide mb-2">
-              Banner customization
-            </label>
-            <div className="relative inline-flex items-center gap-2.5 p-2 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors w-full">
-              <input
-                type="color"
-                value={bannerColor}
-                onChange={(e) => setBannerColor(e.target.value)}
-                className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
-              />
-              <span
-                className="w-6 h-6 rounded-full border border-slate-300 shadow-2xs flex-shrink-0"
-                style={{ backgroundColor: bannerColor }}
-              />
-              <span className="text-xs font-medium text-slate-700">Banner background color</span>
-            </div>
+            <label className="block text-xs font-medium text-slate-700 mb-1">Offer Message</label>
+            <textarea
+              rows={3}
+              value={offerMsg}
+              onChange={(e) => setOfferMsg(e.target.value)}
+              placeholder="Exclusive 20% off all HydraFacial sessions this weekend only..."
+              className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500"
+            />
           </div>
 
-          {/* Discount */}
-          <div className="space-y-2">
-            <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wide">
-              Discount
-            </label>
-            <div className="flex bg-slate-100 p-1 rounded-xl">
-              {(['Percentage', 'Set $ amount'] as const).map((mode) => (
-                <button
-                  key={mode}
-                  type="button"
-                  onClick={() => setDiscountType(mode)}
-                  className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${
-                    discountType === mode
-                      ? 'bg-white shadow-xs text-slate-900'
-                      : 'text-slate-500 hover:text-slate-800'
-                  }`}
-                >
-                  {mode}
-                </button>
-              ))}
-            </div>
-
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">
-                {discountType === 'Percentage' ? 'Percentage' : 'Amount'}
-              </label>
-              <div className="relative">
-                <input
-                  type="number"
-                  min={0}
-                  value={discountVal === 0 ? '' : discountVal}
-                  onChange={(e) => setDiscountVal(Number(e.target.value))}
-                  placeholder="0"
-                  className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500 pr-8"
-                />
-                <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
-                  {discountType === 'Percentage' ? '%' : '$'}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Product(s) */}
-          <div className="space-y-2">
-            <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wide">
-              Product(s)
-            </label>
-            <div className="flex bg-slate-100 p-1 rounded-xl">
-              {(['Includes', 'Excludes'] as const).map((scope) => (
-                <button
-                  key={scope}
-                  type="button"
-                  onClick={() => setProductScope(scope)}
-                  className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${
-                    productScope === scope
-                      ? 'bg-white shadow-xs text-slate-900'
-                      : 'text-slate-500 hover:text-slate-800'
-                  }`}
-                >
-                  {scope}
-                </button>
-              ))}
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">
-                {productScope === 'Includes' ? 'Included product(s)' : 'Excluded product(s)'}
-              </label>
-              <button
-                type="button"
-                className="w-full flex items-center justify-between px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-500 hover:border-slate-300 transition-colors text-left"
+              <label className="block text-xs font-medium text-slate-700 mb-1">Discount Mode</label>
+              <select
+                value={discountType}
+                onChange={(e) => setDiscountType(e.target.value as any)}
+                className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500"
               >
-                <span>Select products</span>
-                <ChevronDown size={14} className="text-slate-400" />
-              </button>
-              <p className="text-[11px] text-slate-400 leading-tight mt-1.5">
-                Leave empty to apply discount to the entire shopping cart (app-wide discount)
-              </p>
+                <option value="Percentage">Percentage (%)</option>
+                <option value="Set $ amount">Fixed Amount ($)</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1">Value</label>
+              <input
+                type="number"
+                min={1}
+                value={discountVal}
+                onChange={(e) => setDiscountVal(Number(e.target.value))}
+                className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500"
+              />
             </div>
           </div>
-        </div>
+        </form>
       </SlideOverDrawer>
     </div>
   );

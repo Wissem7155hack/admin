@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Search, Check, ChevronDown } from 'lucide-react';
 import SlideOverDrawer from '../common/SlideOverDrawer';
 import { SignupBonus } from '../../types';

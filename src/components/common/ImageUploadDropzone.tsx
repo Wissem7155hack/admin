@@ -1,5 +1,6 @@
-import React, { useState, useRef } from 'react';
-import { Upload, X, Image as ImageIcon } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Upload, X, Loader2, Check } from 'lucide-react';
+import { uploadClinicAsset } from '../../hooks/useSupabaseData';
 
 interface ImageUploadDropzoneProps {
   label?: string;
@@ -8,6 +9,7 @@ interface ImageUploadDropzoneProps {
   onImageChange?: (imageUrl: string) => void;
   aspectRatio?: 'square' | 'video' | 'banner' | 'auto';
   className?: string;
+  storageFolder?: string;
 }
 
 export const ImageUploadDropzone: React.FC<ImageUploadDropzoneProps> = ({
@@ -17,16 +19,40 @@ export const ImageUploadDropzone: React.FC<ImageUploadDropzoneProps> = ({
   onImageChange,
   aspectRatio = 'auto',
   className = '',
+  storageFolder = 'clinic-assets',
 }) => {
   const [preview, setPreview] = useState<string>(currentImage || '');
   const [isDragging, setIsDragging] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploaded, setUploaded] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFile = (file: File) => {
-    if (file && file.type.startsWith('image/')) {
-      const url = URL.createObjectURL(file);
-      setPreview(url);
-      if (onImageChange) onImageChange(url);
+  useEffect(() => {
+    if (currentImage !== undefined) {
+      setPreview(currentImage);
+    }
+  }, [currentImage]);
+
+  const handleFile = async (file: File) => {
+    if (!file || !file.type.startsWith('image/')) return;
+
+    // Show instant local preview
+    const localUrl = URL.createObjectURL(file);
+    setPreview(localUrl);
+    setUploading(true);
+
+    try {
+      // Upload directly to Supabase storage bucket 'clinic-assets'
+      const publicUrl = await uploadClinicAsset(file, storageFolder);
+      setPreview(publicUrl);
+      setUploaded(true);
+      if (onImageChange) onImageChange(publicUrl);
+      setTimeout(() => setUploaded(false), 2000);
+    } catch (err) {
+      console.warn('Supabase storage upload failed, keeping local preview:', err);
+      if (onImageChange) onImageChange(localUrl);
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -72,7 +98,7 @@ export const ImageUploadDropzone: React.FC<ImageUploadDropzoneProps> = ({
       {label && <label className="block text-xs font-semibold text-slate-700 mb-1.5">{label}</label>}
 
       <div
-        onClick={() => fileInputRef.current?.click()}
+        onClick={() => !uploading && fileInputRef.current?.click()}
         onDrop={handleDrop}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -88,33 +114,50 @@ export const ImageUploadDropzone: React.FC<ImageUploadDropzoneProps> = ({
           accept="image/png,image/jpeg,image/webp,image/svg+xml"
           onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
           className="hidden"
+          disabled={uploading}
         />
 
         {preview ? (
           <div className="absolute inset-0 w-full h-full group">
             <img src={preview} alt="Upload preview" className="w-full h-full object-cover" />
-            <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-              <span className="text-white text-xs font-semibold bg-slate-900/60 px-3 py-1.5 rounded-lg backdrop-blur-xs">
-                Change Image
-              </span>
-              <button
-                type="button"
-                onClick={handleRemove}
-                className="p-1.5 bg-rose-600 text-white rounded-lg hover:bg-rose-700 transition-colors"
-                title="Remove"
-              >
-                <X size={14} />
-              </button>
-            </div>
+            
+            {uploading && (
+              <div className="absolute inset-0 bg-slate-900/60 flex flex-col items-center justify-center text-white gap-2 backdrop-blur-xs">
+                <Loader2 size={24} className="animate-spin text-pink-400" />
+                <span className="text-xs font-medium">Uploading to Supabase...</span>
+              </div>
+            )}
+
+            {uploaded && !uploading && (
+              <div className="absolute top-2 right-2 bg-emerald-500 text-white rounded-full p-1 shadow-md">
+                <Check size={14} />
+              </div>
+            )}
+
+            {!uploading && (
+              <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                <span className="text-white text-xs font-semibold bg-slate-900/60 px-3 py-1.5 rounded-lg backdrop-blur-xs">
+                  Change Image
+                </span>
+                <button
+                  type="button"
+                  onClick={handleRemove}
+                  className="p-1.5 bg-rose-600 text-white rounded-lg hover:bg-rose-700 transition-colors"
+                  title="Remove"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            )}
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center space-y-1.5">
             <div className="w-10 h-10 rounded-xl bg-white shadow-xs border border-slate-200/80 flex items-center justify-center text-slate-400 group-hover:text-pink-500 group-hover:border-pink-200 transition-colors">
-              <Upload size={18} />
+              {uploading ? <Loader2 size={18} className="animate-spin text-pink-500" /> : <Upload size={18} />}
             </div>
             <div>
               <p className="text-xs font-semibold text-slate-700 group-hover:text-pink-600 transition-colors">
-                Click to upload <span className="font-normal text-slate-400">or drag & drop</span>
+                {uploading ? 'Uploading to cloud...' : 'Click to upload'} <span className="font-normal text-slate-400">or drag & drop</span>
               </p>
               <p className="text-[10px] text-slate-400 mt-0.5">{helperText}</p>
             </div>
@@ -124,4 +167,5 @@ export const ImageUploadDropzone: React.FC<ImageUploadDropzoneProps> = ({
     </div>
   );
 };
+
 export default ImageUploadDropzone;

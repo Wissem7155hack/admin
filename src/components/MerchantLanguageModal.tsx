@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Globe, Check } from 'lucide-react';
 import { Merchant } from '../types';
@@ -13,11 +13,12 @@ const LANGUAGES = [
   { code: 'pt', name: 'Portuguese', flag: '🇵🇹' },
 ];
 
-interface MerchantLanguageModalProps {
+export interface MerchantLanguageModalProps {
   isOpen: boolean;
   merchant: Merchant | null;
   onClose: () => void;
-  onSelectLanguage: (merchantId: string, language: string) => void;
+  onSelectLanguage?: (merchantId: string, language: string) => void;
+  onSave?: (merchantId: string, language: string) => void;
 }
 
 export const MerchantLanguageModal: React.FC<MerchantLanguageModalProps> = ({
@@ -25,6 +26,7 @@ export const MerchantLanguageModal: React.FC<MerchantLanguageModalProps> = ({
   merchant,
   onClose,
   onSelectLanguage,
+  onSave,
 }) => {
   const [selectedLang, setSelectedLang] = useState(merchant?.language ?? 'English');
 
@@ -49,13 +51,16 @@ export const MerchantLanguageModal: React.FC<MerchantLanguageModalProps> = ({
   if (!isOpen || !merchant) return null;
 
   const handleSave = () => {
-    onSelectLanguage(merchant.id, selectedLang);
+    if (onSave) {
+      onSave(merchant.id, selectedLang);
+    } else if (onSelectLanguage) {
+      onSelectLanguage(merchant.id, selectedLang);
+    }
     onClose();
   };
 
   return createPortal(
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
-      {/* Full screen backdrop with blur covering entire page */}
       <div
         className="fixed inset-0 bg-slate-900/50 backdrop-blur-md transition-opacity duration-200"
         onClick={onClose}

@@ -41,6 +41,8 @@ export interface Merchant {
   phone?: string;
   email?: string;
   ownerName?: string;
+  tagline?: string;
+  theme?: Record<string, any>;
 }
 
 export interface ClientProfile {
@@ -123,12 +125,16 @@ export interface Product {
   bundles?: { quantity: number; price: number }[];
   variations?: { name: string; price: number }[];
   imageUrl?: string;
+  photoUrl?: string;
   practitioner?: string;
   beforeInstructions?: string;
   afterInstructions?: string;
-  consultationWarning: boolean;
-  cashBalanceExclusion: boolean;
-  hideFromShop: boolean;
+  consultationWarning?: boolean;
+  cashBalanceExclusion?: boolean;
+  hideFromShop?: boolean;
+  requiresConsultation?: boolean;
+  excludeCashBalance?: boolean;
+  hiddenFromShop?: boolean;
   clientResults?: { photoUrl?: string; testimonial: string }[];
 }
 
@@ -138,7 +144,8 @@ export interface SignupBonus {
   availability: 'In-app' | 'In-Office';
   discountType: 'Percentage' | 'Set $ amount' | 'Free service';
   value: number;
-  productMode: 'Includes' | 'Excludes';
+  productMode?: 'Includes' | 'Excludes';
+  productFilter?: 'Includes' | 'Excludes';
   products: string[];
 }
 

@@ -1,8 +1,9 @@
-import React, { ChangeEvent, useState } from 'react';
-import { UploadCloud, Info, Plus } from 'lucide-react';
+import { ChangeEvent, useState } from 'react';
+import { UploadCloud, Plus } from 'lucide-react';
 import SignupBonusSheet from './SignupBonusSheet';
 import SlideOverDrawer from '../common/SlideOverDrawer';
 import { MembershipRecord, SignupBonus } from '../../types';
+import { uploadMembershipAsset } from '../../hooks/useSupabaseData';
 
 interface Props {
   onClose: () => void;
@@ -23,12 +24,23 @@ export default function CreateMembershipSheet({ onClose, onCreate }: Props) {
   const [benefits, setBenefits] = useState<string[]>([]);
   const [nextBenefit, setNextBenefit] = useState('');
 
-  function handleImageUpload(event: ChangeEvent<HTMLInputElement>) {
+  const [uploadingImage, setUploadingImage] = useState(false);
+
+  async function handleImageUpload(event: ChangeEvent<HTMLInputElement>) {
     const image = event.target.files?.[0];
     if (!image) {
       return;
     }
-    setImageUrl(URL.createObjectURL(image));
+    try {
+      setUploadingImage(true);
+      const publicUrl = await uploadMembershipAsset(image);
+      setImageUrl(publicUrl);
+    } catch (err) {
+      console.warn('Failed to upload membership image to storage, fallback to local URL:', err);
+      setImageUrl(URL.createObjectURL(image));
+    } finally {
+      setUploadingImage(false);
+    }
   }
 
   function addBenefit() {
@@ -142,7 +154,7 @@ export default function CreateMembershipSheet({ onClose, onCreate }: Props) {
               />
               <label htmlFor="membership-image" className="cursor-pointer block">
                 <UploadCloud className="mx-auto text-gray-400 mb-2" size={24} />
-                <p className="text-xs font-semibold text-gray-700">Click to upload or drag and drop</p>
+                <p className="text-xs font-semibold text-gray-700">{uploadingImage ? 'Uploading to membership-media...' : 'Click to upload or drag and drop'}</p>
                 <p className="text-[11px] text-gray-400 mt-0.5">PNG or JPG (max. 1920x1080px)</p>
               </label>
             </div>
@@ -232,7 +244,7 @@ export default function CreateMembershipSheet({ onClose, onCreate }: Props) {
             )}
           </section>
         </div>
-      </SlideOverDrawer>
+      </SlideOverDrawer >
 
       {showSignupBonus && (
         <SignupBonusSheet
@@ -242,7 +254,8 @@ export default function CreateMembershipSheet({ onClose, onCreate }: Props) {
             setShowSignupBonus(false);
           }}
         />
-      )}
+      )
+      }
     </>
   );
 }

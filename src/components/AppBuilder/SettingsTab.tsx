@@ -1,21 +1,42 @@
-import React, { useState } from 'react';
-import { Check, RefreshCw, Plus, ArrowLeft } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Check, Plus, Trash2, Loader2, Sparkles, Pencil } from 'lucide-react';
 import ImageUploadDropzone from '../common/ImageUploadDropzone';
 import EmptyState from '../EmptyState';
 import SlideOverDrawer from '../common/SlideOverDrawer';
-import { EducationArticle } from '../../types';
+import { Merchant } from '../../types';
+import { useArticles, ArticleRecord, useClinics } from '../../hooks/useSupabaseData';
 
-export default function SettingsTab() {
+interface SettingsTabProps {
+  clinicId?: string;
+  currentMerchant?: Merchant;
+  onUpdateClinic?: (updated: Partial<Merchant>) => void;
+}
+
+export default function SettingsTab({
+  clinicId,
+  currentMerchant,
+  onUpdateClinic,
+}: SettingsTabProps) {
+  const { updateClinicTheme, updateClinicDetails } = useClinics();
+  const {
+    articles: supabaseArticles,
+    loading: articlesLoading,
+    addArticle,
+    updateArticle,
+    deleteArticle,
+  } = useArticles(clinicId);
+
+  // Branding States
   const [appIcon, setAppIcon] = useState('');
   const [rawLogo, setRawLogo] = useState('');
   const [bannerImage, setBannerImage] = useState('');
-  const [brandColor, setBrandColor] = useState('#000000');
-  const [greetingColor, setGreetingColor] = useState('#000000');
+  const [brandColor, setBrandColor] = useState('#EC4899');
+  const [greetingColor, setGreetingColor] = useState('#1E293B');
   const [fontFamily, setFontFamily] = useState('Inter');
   const [cashName, setCashName] = useState('Patient App Cash');
 
+  // Business Details
   const [bizName, setBizName] = useState('Glow MedSpa & Laser');
-  const [timezone, setTimezone] = useState('-05:00 Eastern Time - New York City, Brooklyn, Queens, Philadelphia');
   const [currency, setCurrency] = useState('USD ($)');
   const [country, setCountry] = useState('United States');
   const [address, setAddress] = useState('Suite 400, 750 Lexington Ave');
@@ -28,53 +49,173 @@ export default function SettingsTab() {
   const [passFee, setPassFee] = useState(false);
   const [cashBalanceLimit, setCashBalanceLimit] = useState(100);
 
-  const [articles, setArticles] = useState<EducationArticle[]>([]);
+  // Article Drawer & Form
   const [openArticleDrawer, setOpenArticleDrawer] = useState(false);
-
-  React.useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpenArticleDrawer(false);
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  const [editingArticle, setEditingArticle] = useState<ArticleRecord | null>(null);
   const [articleHeadline, setArticleHeadline] = useState('');
   const [articleDescription, setArticleDescription] = useState('');
+  const [articleAuthor, setArticleAuthor] = useState('Clinical Specialist');
   const [articleLink, setArticleLink] = useState('');
   const [articleCover, setArticleCover] = useState('');
 
+  const [savingSettings, setSavingSettings] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [publishingArticle, setPublishingArticle] = useState(false);
 
-  const handleSave = (e: React.FormEvent) => {
+  // Initialize from currentMerchant
+  useEffect(() => {
+    if (currentMerchant) {
+      setBizName(currentMerchant.name || 'Glow MedSpa & Laser');
+      if (currentMerchant.brandColor) setBrandColor(currentMerchant.brandColor);
+      if (currentMerchant.address) setAddress(currentMerchant.address);
+      if (currentMerchant.logoUrl) {
+        setBannerImage(currentMerchant.logoUrl);
+        setRawLogo(currentMerchant.logoUrl);
+      }
+    }
+  }, [currentMerchant]);
+
+  // Handle Save Settings to Supabase
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 2500);
+    setSavingSettings(true);
+    try {
+      if (clinicId) {
+        // Update live theme palette in Supabase
+        const updatedTheme = {
+          primaryColor: brandColor,
+          accentColor: brandColor,
+          secondaryColor: greetingColor,
+          backgroundColor: '#F8FAFC',
+          surfaceColor: '#FFFFFF',
+          borderColor: '#E2E8F0',
+          textPrimary: '#0F172A',
+          textSecondary: '#64748B',
+        };
+
+        await updateClinicTheme(clinicId, updatedTheme);
+
+        // Update clinic row details
+        await updateClinicDetails(clinicId, {
+          full_name: bizName,
+          address,
+          hero_image: bannerImage || rawLogo || appIcon,
+        });
+      }
+
+      if (onUpdateClinic) {
+        onUpdateClinic({
+          name: bizName,
+          brandColor,
+          address,
+          logoUrl: bannerImage || rawLogo,
+        });
+      }
+
+      setSavedSuccess(true);
+      setTimeout(() => setSavedSuccess(false), 3000);
+    } catch (err) {
+      console.error('Failed to update clinic in Supabase:', err);
+      alert('Could not update clinic in Supabase: ' + (err?.message || JSON.stringify(err)));
+    } finally {
+      setSavingSettings(false);
+    }
   };
 
-  const handleCreateArticle = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!articleHeadline.trim()) return;
-    const newArt: EducationArticle = {
-      id: 'art-' + Date.now(),
-      headline: articleHeadline,
-      description: articleDescription,
-      link: articleLink,
-      coverUrl: articleCover || '/images/skincare-products.jpg',
-      publishedAt: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-    };
-    setArticles([newArt, ...articles]);
+  // Open drawer to create a new article
+  const openCreateArticleDrawer = () => {
+    setEditingArticle(null);
     setArticleHeadline('');
     setArticleDescription('');
+    setArticleAuthor('Clinical Specialist');
     setArticleLink('');
     setArticleCover('');
+    setOpenArticleDrawer(true);
+  };
+
+  // Open drawer to edit an existing article (prefilled from Supabase record)
+  const openEditArticleDrawer = (article: ArticleRecord) => {
+    setEditingArticle(article);
+    setArticleHeadline(article.title || '');
+    setArticleDescription(article.body || article.snippet || '');
+    setArticleAuthor(article.author || 'Clinical Specialist');
+    setArticleLink((article as any).link || '');
+    setArticleCover(article.image || '');
+    setOpenArticleDrawer(true);
+  };
+
+  const closeArticleDrawer = () => {
     setOpenArticleDrawer(false);
+    setTimeout(() => {
+      setEditingArticle(null);
+      setArticleHeadline('');
+      setArticleDescription('');
+      setArticleAuthor('Clinical Specialist');
+      setArticleLink('');
+      setArticleCover('');
+    }, 320);
+  };
+
+  // Handle Create or Update Educational Article
+  const handleCreateArticle = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!articleHeadline.trim()) return;
+
+    setPublishingArticle(true);
+    try {
+      if (clinicId) {
+        if (editingArticle) {
+          await updateArticle(editingArticle.id, {
+            title: articleHeadline,
+            author: articleAuthor || 'Clinical Team',
+            snippet: articleDescription.substring(0, 120),
+            body: articleDescription,
+            image: articleCover || '/images/skincare-products.jpg',
+          });
+        } else {
+          await addArticle({
+            clinic_id: clinicId,
+            title: articleHeadline,
+            author: articleAuthor || 'Clinical Team',
+            snippet: articleDescription.substring(0, 120),
+            body: articleDescription,
+            image: articleCover || '/images/skincare-products.jpg',
+          });
+        }
+      }
+
+      closeArticleDrawer();
+    } catch (err) {
+      console.error('Failed to save article in Supabase:', err);
+      alert('Could not save the article to Supabase: ' + (err?.message || JSON.stringify(err)));
+    } finally {
+      setPublishingArticle(false);
+    }
+  };
+
+  const handleDeleteArticle = async (id: string) => {
+    try {
+      if (clinicId) {
+        await deleteArticle(id);
+      }
+    } catch (err) {
+      console.error('Failed to delete article:', err);
+    }
   };
 
   return (
-    <form onSubmit={handleSave} className="space-y-6 max-w-5xl animate-in fade-in duration-200">
-      {/* 1. BRANDING (Compact 2-col layout) */}
+    <form onSubmit={handleSave} className="space-y-6 max-w-5xl animate-in fade-in duration-200 pb-12">
+      {/* 1. BRANDING */}
       <div className="bg-white rounded-2xl border border-slate-100 shadow-xs p-6 space-y-5">
-        <h3 className="text-sm font-bold text-slate-900 pb-3 border-b border-slate-100">Branding</h3>
+        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+          <div>
+            <h3 className="text-sm font-bold text-slate-900">Branding & Theme Palettes</h3>
+            <p className="text-xs text-slate-400">Manage your clinic logos, banner visuals, and live app color palettes.</p>
+          </div>
+          <span className="text-[11px] font-semibold text-pink-600 bg-pink-50 px-2.5 py-1 rounded-full flex items-center gap-1">
+            <Sparkles size={12} /> Supabase Sync
+          </span>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <ImageUploadDropzone
@@ -83,6 +224,7 @@ export default function SettingsTab() {
             aspectRatio="square"
             currentImage={appIcon}
             onImageChange={setAppIcon}
+            storageFolder="branding"
           />
 
           <ImageUploadDropzone
@@ -91,6 +233,7 @@ export default function SettingsTab() {
             aspectRatio="square"
             currentImage={rawLogo}
             onImageChange={setRawLogo}
+            storageFolder="branding"
           />
 
           <ImageUploadDropzone
@@ -99,19 +242,20 @@ export default function SettingsTab() {
             aspectRatio="banner"
             currentImage={bannerImage}
             onImageChange={setBannerImage}
+            storageFolder="branding"
           />
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
           {/* Brand color */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Brand color</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Brand Accent Color</label>
             <div className="flex items-center gap-2">
               <input
                 type="color"
                 value={brandColor}
                 onChange={(e) => setBrandColor(e.target.value)}
-                className="w-8 h-8 rounded-lg border border-slate-200 cursor-pointer p-0.5"
+                className="w-9 h-9 rounded-xl border border-slate-200 cursor-pointer p-0.5 bg-white shadow-2xs"
               />
               <input
                 type="text"
@@ -122,15 +266,15 @@ export default function SettingsTab() {
             </div>
           </div>
 
-          {/* Greeting color */}
+          {/* Secondary / Greeting color */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Greeting text color</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Greeting / Header Color</label>
             <div className="flex items-center gap-2">
               <input
                 type="color"
                 value={greetingColor}
                 onChange={(e) => setGreetingColor(e.target.value)}
-                className="w-8 h-8 rounded-lg border border-slate-200 cursor-pointer p-0.5"
+                className="w-9 h-9 rounded-xl border border-slate-200 cursor-pointer p-0.5 bg-white shadow-2xs"
               />
               <input
                 type="text"
@@ -159,7 +303,7 @@ export default function SettingsTab() {
 
           {/* Cash Name */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Cash Name</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Rewards Cash Name</label>
             <input
               type="text"
               value={cashName}
@@ -170,9 +314,9 @@ export default function SettingsTab() {
         </div>
       </div>
 
-      {/* 2. BUSINESS DETAILS (Compact structured grid) */}
+      {/* 2. BUSINESS DETAILS */}
       <div className="bg-white rounded-2xl border border-slate-100 shadow-xs p-6 space-y-4">
-        <h3 className="text-sm font-bold text-slate-900 pb-3 border-b border-slate-100">Business details</h3>
+        <h3 className="text-sm font-bold text-slate-900 pb-3 border-b border-slate-100">Business Details</h3>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <div>
@@ -273,7 +417,7 @@ export default function SettingsTab() {
 
       {/* 3. CHECKOUT POLICIES */}
       <div className="bg-white rounded-2xl border border-slate-100 shadow-xs p-6 space-y-4">
-        <h3 className="text-sm font-bold text-slate-900 pb-3 border-b border-slate-100">Checkout policies</h3>
+        <h3 className="text-sm font-bold text-slate-900 pb-3 border-b border-slate-100">Checkout Policies</h3>
 
         <div className="flex items-center justify-between p-3.5 bg-slate-50/70 border border-slate-200/80 rounded-xl">
           <div>
@@ -310,39 +454,74 @@ export default function SettingsTab() {
         </div>
       </div>
 
-      {/* 4. EDUCATION BLOG SECTION */}
+      {/* 4. EDUCATION BLOG SECTION (Live Supabase articles) */}
       <div className="bg-white rounded-2xl border border-slate-100 shadow-xs p-6">
         <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-4">
           <div>
-            <h3 className="text-sm font-bold text-slate-900">Education section</h3>
-            <p className="text-xs text-slate-400">Post clinic articles and care tips to patient app feed.</p>
+            <h3 className="text-sm font-bold text-slate-900">Education & Blog Articles</h3>
+            <p className="text-xs text-slate-400">Articles stored live in Supabase and displayed in the patient app feed.</p>
           </div>
           <button
             type="button"
-            onClick={() => setOpenArticleDrawer(true)}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-pink-500 hover:bg-pink-600 text-white rounded-xl text-xs font-semibold shadow-2xs transition-colors"
+            onClick={openCreateArticleDrawer}
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-pink-500 hover:bg-pink-600 text-white rounded-xl text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
           >
             <Plus size={14} />
             <span>Create new content</span>
           </button>
         </div>
 
-        {articles.length === 0 ? (
+        {articlesLoading && (!supabaseArticles || supabaseArticles.length === 0) ? (
+          <div className="py-8 flex items-center justify-center">
+            <Loader2 size={24} className="animate-spin text-pink-500" />
+          </div>
+        ) : !supabaseArticles || supabaseArticles.length === 0 ? (
           <div className="py-8">
             <EmptyState
               title="No educational articles"
-              description="Publish care tips and treatment prep guides directly to client phones."
+              description="Publish care tips, recovery advice, and treatment prep guides directly to client phones."
+              action={{
+                label: "Write an article",
+                onClick: openCreateArticleDrawer,
+              }}
             />
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {articles.map((art) => (
-              <div key={art.id} className="p-3.5 rounded-xl border border-slate-200/80 bg-slate-50/50 flex gap-3">
-                <img src={art.coverUrl} alt={art.headline} className="w-16 h-16 rounded-lg object-cover flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <h4 className="text-xs font-bold text-slate-900 truncate">{art.headline}</h4>
-                  <p className="text-[11px] text-slate-500 line-clamp-2 mt-0.5">{art.description}</p>
-                  <span className="text-[10px] text-slate-400 mt-1 block">Published {art.publishedAt}</span>
+            {supabaseArticles.map((art: ArticleRecord) => (
+              <div key={art.id} className="p-4 rounded-xl border border-slate-200/80 bg-slate-50/50 flex gap-3 group relative">
+                <img
+                  src={art.image || '/images/skincare-products.jpg'}
+                  alt={art.title}
+                  className="w-16 h-16 rounded-xl object-cover flex-shrink-0 border border-slate-200"
+                />
+                <div className="flex-1 min-w-0 pr-6">
+                  <h4 className="text-xs font-bold text-slate-900 truncate">{art.title}</h4>
+                  <p className="text-[11px] text-slate-500 line-clamp-2 mt-1">{art.snippet || art.body}</p>
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className="text-[10px] font-medium text-pink-600 bg-pink-50 px-2 py-0.5 rounded-md">
+                      {art.author || 'Clinical Specialist'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-1.5 absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    type="button"
+                    onClick={() => openEditArticleDrawer(art)}
+                    className="p-1.5 bg-white rounded-lg border border-slate-200 text-slate-500 hover:text-slate-900 hover:border-slate-300 shadow-sm"
+                    title="Edit article"
+                  >
+                    <Pencil size={13} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteArticle(art.id)}
+                    className="p-1.5 bg-white rounded-lg border border-slate-200 text-slate-400 hover:text-rose-600 hover:border-rose-200 shadow-sm"
+                    title="Delete article"
+                  >
+                    <Trash2 size={13} />
+                  </button>
                 </div>
               </div>
             ))}
@@ -353,31 +532,33 @@ export default function SettingsTab() {
       {/* Save Button Bar */}
       <div className="flex items-center justify-between pt-2">
         {savedSuccess ? (
-          <span className="text-xs font-semibold text-emerald-600 flex items-center gap-1.5">
-            <Check size={16} /> Changes saved successfully!
+          <span className="text-xs font-semibold text-emerald-600 flex items-center gap-1.5 animate-in fade-in">
+            <Check size={16} /> Changes saved live to Supabase!
           </span>
         ) : (
           <span />
         )}
         <button
           type="submit"
-          className="px-6 py-2.5 bg-pink-500 hover:bg-pink-600 text-white rounded-xl text-sm font-semibold shadow-sm shadow-pink-200 transition-all hover:shadow-md"
+          disabled={savingSettings}
+          className="px-6 py-2.5 bg-pink-500 hover:bg-pink-600 text-white rounded-xl text-sm font-semibold shadow-sm shadow-pink-200 transition-all hover:shadow-md flex items-center gap-2 cursor-pointer"
         >
-          Save Settings
+          {savingSettings && <Loader2 size={16} className="animate-spin" />}
+          <span>{savingSettings ? 'Updating Supabase...' : 'Save Settings'}</span>
         </button>
       </div>
 
       {/* Article Drawer */}
       <SlideOverDrawer
         isOpen={openArticleDrawer}
-        onClose={() => setOpenArticleDrawer(false)}
-        title="Create new content"
-        maxWidth="max-w-[480px]"
+        onClose={closeArticleDrawer}
+        title={editingArticle ? 'Edit Article' : 'Publish Educational Article'}
+        maxWidth="max-w-[540px]"
         footer={
           <>
             <button
               type="button"
-              onClick={() => setOpenArticleDrawer(false)}
+              onClick={closeArticleDrawer}
               className="text-xs font-medium text-slate-600 hover:text-slate-900 transition-colors"
             >
               Cancel
@@ -385,53 +566,75 @@ export default function SettingsTab() {
             <button
               type="button"
               onClick={handleCreateArticle}
-              className="px-6 py-2.5 bg-pink-500 hover:bg-pink-600 text-white rounded-full text-xs font-semibold shadow-sm shadow-pink-200 transition-all hover:shadow-md"
+              disabled={publishingArticle}
+              className="px-6 py-2.5 bg-pink-500 hover:bg-pink-600 text-white rounded-full text-xs font-semibold shadow-sm shadow-pink-200 transition-all hover:shadow-md flex items-center gap-1.5"
             >
-              Publish Article
+              {publishingArticle && <Loader2 size={14} className="animate-spin" />}
+              <span>
+                {publishingArticle
+                  ? editingArticle
+                    ? 'Saving...'
+                    : 'Publishing...'
+                  : editingArticle
+                    ? 'Save Changes'
+                    : 'Publish Article'}
+              </span>
             </button>
           </>
         }
       >
-        <div className="space-y-4 text-xs">
+        <div className="space-y-5 text-sm">
           <ImageUploadDropzone
-            label="Content cover"
-            helperText="max. 1920x1080px"
+            label="Content Cover Image"
+            helperText="Uploaded to Supabase storage"
             aspectRatio="banner"
             currentImage={articleCover}
             onImageChange={setArticleCover}
+            storageFolder="articles"
           />
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Content headline</label>
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Article Headline *</label>
             <input
               type="text"
               required
               value={articleHeadline}
               onChange={(e) => setArticleHeadline(e.target.value)}
-              placeholder="e.g. 5 Post-Botox Tips"
-              className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500"
+              placeholder="e.g. Combining Moxi and BBL for Skin Tightening"
+              className="w-full px-4 py-3.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500 shadow-sm"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Content description</label>
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Author / Specialist</label>
+            <input
+              type="text"
+              value={articleAuthor}
+              onChange={(e) => setArticleAuthor(e.target.value)}
+              placeholder="e.g. Dr. Sarah Louise"
+              className="w-full px-4 py-3.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500 shadow-sm"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Content Description / Body</label>
             <textarea
-              rows={4}
+              rows={6}
               value={articleDescription}
               onChange={(e) => setArticleDescription(e.target.value)}
-              placeholder="Care advice details..."
-              className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500 resize-none"
+              placeholder="Write the clinical guidance or care tips..."
+              className="w-full px-4 py-3.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500 shadow-sm resize-none"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Content link</label>
+            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Reference Link (Optional)</label>
             <input
               type="url"
               value={articleLink}
               onChange={(e) => setArticleLink(e.target.value)}
               placeholder="https://..."
-              className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500"
+              className="w-full px-4 py-3.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500 shadow-sm"
             />
           </div>
         </div>
@@ -439,4 +642,5 @@ export default function SettingsTab() {
     </form>
   );
 }
+
 export { SettingsTab };

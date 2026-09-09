@@ -1,17 +1,19 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Smartphone, ExternalLink, QrCode } from 'lucide-react';
+import { X, Smartphone, ExternalLink } from 'lucide-react';
 
 interface ViewAppModalProps {
   isOpen: boolean;
   onClose: () => void;
   clinicName?: string;
+  merchantName?: string;
 }
 
 export default function ViewAppModal({
   isOpen,
   onClose,
-  clinicName = 'Beauty2Go Clinic',
+  clinicName,
+  merchantName = 'Beauty2Go Clinic',
 }: ViewAppModalProps) {
   useEffect(() => {
     if (!isOpen) return;
@@ -43,7 +45,7 @@ export default function ViewAppModal({
         <div className="flex items-center justify-between pb-4 border-b border-slate-100">
           <div className="flex items-center gap-2 text-slate-900">
             <Smartphone className="text-pink-500" size={20} />
-            <h3 className="text-lg font-bold">Preview {clinicName} App</h3>
+            <h3 className="text-lg font-bold">Preview {clinicName || merchantName} App</h3>
           </div>
           <button
             type="button"

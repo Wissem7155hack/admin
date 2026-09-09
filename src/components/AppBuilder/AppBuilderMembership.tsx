@@ -1,22 +1,29 @@
-import { useMemo, useState } from 'react';
-import { Plus, Sparkles, Users, CalendarDays } from 'lucide-react';
+import { useMemo } from 'react';
+import EmptyState from '../EmptyState';
+import { Sparkles, Users, CalendarDays } from 'lucide-react';
 import CreateMembershipSheet from './CreateMembershipSheet';
 import { MembershipRecord } from '../../types';
+import { useMemberships } from '../../hooks/useSupabaseData';
 
 interface Props {
+  clinicId?: string;
   openComposer: boolean;
   onComposerChange: (open: boolean) => void;
 }
 
 const defaultImage = '/images/spa-membership.jpg';
 
-export default function AppBuilderMembership({ openComposer, onComposerChange }: Props) {
-  const [memberships, setMemberships] = useState<MembershipRecord[]>([]);
+export default function AppBuilderMembership({ clinicId, openComposer, onComposerChange }: Props) {
+  const { memberships, addMembership } = useMemberships(clinicId);
 
   const featuredMembership = useMemo(() => memberships[0], [memberships]);
 
-  function handleCreateMembership(nextMembership: MembershipRecord) {
-    setMemberships((prev) => [nextMembership, ...prev]);
+  async function handleCreateMembership(nextMembership: MembershipRecord) {
+    try {
+      await addMembership(nextMembership);
+    } catch (err) {
+      console.error('Failed to create membership in Supabase:', err);
+    }
     onComposerChange(false);
   }
 
@@ -25,23 +32,34 @@ export default function AppBuilderMembership({ openComposer, onComposerChange }:
       {/* Phone preview */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 flex flex-col items-center">
         <p className="text-xs text-gray-400 mb-3">Preview</p>
-        <div className="relative w-[260px] h-[520px] rounded-[40px] bg-slate-900 shadow-[0_20px_40px_rgba(15,23,42,0.35)] overflow-hidden">
-          <div className="absolute top-3 w-24 h-5 rounded-full bg-slate-800" />
-          <div className="absolute left-0 top-24 w-1.5 h-20 bg-slate-800 rounded-r-full" />
-          <div className="absolute right-0 top-32 w-1.5 h-16 bg-slate-800 rounded-l-full" />
-          <div className="absolute inset-3 mt-8 rounded-[28px] bg-white overflow-hidden">
+        {/* Smartphone Frame - iPhone style matching Offers tab, larger */}
+        <div className="w-[300px] h-[580px] bg-[#1E293B] rounded-[48px] p-3 shadow-2xl border-4 border-slate-800 relative flex flex-col overflow-hidden">
+          {/* Top Speaker/Camera notch */}
+          <div className="w-24 h-4 bg-[#1E293B] rounded-b-xl mx-auto absolute top-3 left-1/2 -translate-x-1/2 z-20" />
+
+          {/* Screen container */}
+          <div className="w-full h-full bg-white rounded-[38px] overflow-hidden flex flex-col pt-10">
             {featuredMembership ? (
-              <div className="h-full flex flex-col">
-                <img
-                  src={featuredMembership.imageUrl || defaultImage}
-                  alt={featuredMembership.name}
-                  className="h-36 w-full object-cover"
-                />
-                <div className="p-4 space-y-3">
-                  <div>
-                    <p className="text-sm font-semibold text-slate-900">{featuredMembership.name}</p>
-                    <p className="text-xs text-slate-500">{featuredMembership.description || 'Premium monthly access with curated member perks.'}</p>
-                  </div>
+              <div className="h-full flex flex-col overflow-y-auto px-4 pb-4">
+                <div className="text-center my-3">
+                  <h3 className="text-sm font-bold text-slate-900 tracking-tight">
+                    {featuredMembership.name}
+                  </h3>
+                  <p className="text-[11px] text-slate-500 mt-1 line-clamp-2">
+                    {featuredMembership.description || 'Premium monthly access with curated member perks.'}
+                  </p>
+                </div>
+
+                {/* Membership image card inside phone */}
+                <div className="mt-1 rounded-2xl overflow-hidden shadow-xs border border-slate-100 bg-slate-900 aspect-[4/3] relative flex-shrink-0">
+                  <img
+                    src={featuredMembership.imageUrl || defaultImage}
+                    alt={featuredMembership.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+
+                <div className="py-4 space-y-3">
                   <div className="flex items-center justify-between text-xs text-slate-600">
                     <span className="inline-flex items-center gap-1"><Users size={12} /> 0 members</span>
                     <span className="font-semibold text-slate-900">${featuredMembership.price}/mo</span>
@@ -51,7 +69,18 @@ export default function AppBuilderMembership({ openComposer, onComposerChange }:
                       <CalendarDays size={11} /> {featuredMembership.commitmentMonths} months commitment
                     </span>
                   )}
-                  <button className="w-full rounded-xl bg-pink-500 py-2 text-xs font-semibold text-white">Join membership</button>
+                  {featuredMembership.benefits.length > 0 && (
+                    <div className="space-y-1.5">
+                      {featuredMembership.benefits.map((benefit) => (
+                        <span key={benefit} className="block rounded-lg bg-slate-50 border border-slate-100 px-3 py-1.5 text-[11px] text-slate-600">
+                          {benefit}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  <button className="w-full rounded-xl bg-pink-500 py-2.5 text-xs font-semibold text-white shadow-sm">
+                    Join membership
+                  </button>
                 </div>
               </div>
             ) : (
@@ -76,21 +105,15 @@ export default function AppBuilderMembership({ openComposer, onComposerChange }:
         <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_top,_rgba(236,72,153,0.03),_transparent_55%)]" />
         <div className="relative z-10 flex-1 overflow-auto">
           {memberships.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center">
-              <div className="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center mb-4 text-gray-500">
-                <Sparkles size={32} />
-              </div>
-              <h2 className="text-lg font-semibold text-gray-800 mb-1">Create your first membership!</h2>
-              <p className="text-sm text-gray-400 max-w-md mb-5">
-                Design recurring plans, configure pricing, and add signup bonuses that automatically reward new members.
-              </p>
-              <button
-                onClick={() => onComposerChange(true)}
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-pink-500 hover:bg-pink-600 text-white rounded-full text-sm font-semibold shadow-md shadow-pink-200 transition-all hover:shadow-lg"
-              >
-                <Plus size={16} />
-                Create a new membership
-              </button>
+            <div className="h-full flex flex-col items-center justify-center py-8">
+              <EmptyState
+                title="Create your first membership!"
+                description="Design recurring plans, configure pricing, and add signup bonuses that automatically reward new members."
+                action={{
+                  label: "Create a new membership",
+                  onClick: () => onComposerChange(true),
+                }}
+              />
             </div>
           ) : (
             <div className="space-y-3 text-left">

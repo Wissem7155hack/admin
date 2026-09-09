@@ -22,11 +22,7 @@ export const AddMerchantModal: React.FC<AddMerchantModalProps> = ({ isOpen, onCl
   const [brandColor, setBrandColor] = useState('#EC4899');
   const [businessName, setBusinessName] = useState('');
   const [websiteUrl, setWebsiteUrl] = useState('');
-  const [treatmentListUrl, setTreatmentListUrl] = useState('');
-  const [description, setDescription] = useState('');
   const [currency, setCurrency] = useState('USD ($)');
-
-  const [timezone, setTimezone] = useState('-05:00 Eastern Time - New York City, Brooklyn, Queens, Philadelphia');
   const [country, setCountry] = useState('United States');
   const [address, setAddress] = useState('');
   const [postalCode, setPostalCode] = useState('');
@@ -60,8 +56,8 @@ export const AddMerchantModal: React.FC<AddMerchantModalProps> = ({ isOpen, onCl
     setPassword('');
     setBusinessName('');
     setWebsiteUrl('');
-    setTreatmentListUrl('');
-    setDescription('');
+    
+    
     setAddress('');
     setPostalCode('');
     onClose();

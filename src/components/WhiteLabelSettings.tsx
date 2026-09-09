@@ -1,5 +1,7 @@
-import { useState } from 'react';
-import { ImageIcon, Palette, Languages, Check, Upload } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ImageIcon, Palette, Languages, Check, Upload, Sparkles, Loader2 } from 'lucide-react';
+import { Merchant } from '../types';
+import { useClinics } from '../hooks/useSupabaseData';
 
 const PRESET_COLORS = [
   '#3b82f6',
@@ -14,19 +16,70 @@ const PRESET_COLORS = [
 
 const LANGUAGES = ['English', 'Dutch', 'German', 'Spanish', 'French', 'Italian', 'Polish', 'Norwegian'];
 
-export default function WhiteLabelSettings() {
+interface WhiteLabelSettingsProps {
+  currentMerchant?: Merchant;
+  merchants?: Merchant[];
+  onUpdateMerchantColor?: (merchantId: string, color: string) => void;
+}
+
+export default function WhiteLabelSettings({
+  currentMerchant,
+  merchants = [],
+  onUpdateMerchantColor,
+}: WhiteLabelSettingsProps) {
+  const { updateClinicTheme } = useClinics();
+  const [selectedTargetClinic, setSelectedTargetClinic] = useState<string>(currentMerchant?.id || '');
   const [selectedColor, setSelectedColor] = useState('#ec4899');
   const [customColor, setCustomColor] = useState('#EC4899');
   const [language, setLanguage] = useState('English');
+  const [saving, setSaving] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (currentMerchant) {
+      setSelectedTargetClinic(currentMerchant.id);
+      if (currentMerchant.brandColor) {
+        setSelectedColor(currentMerchant.brandColor);
+        setCustomColor(currentMerchant.brandColor);
+      }
+    }
+  }, [currentMerchant]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 2500);
   };
 
+  const handleSaveColor = async () => {
+    setSaving(true);
+    try {
+      if (selectedTargetClinic) {
+        const theme = {
+          primaryColor: customColor,
+          accentColor: customColor,
+          secondaryColor: '#1E293B',
+          backgroundColor: '#F8FAFC',
+          surfaceColor: '#FFFFFF',
+          borderColor: '#E2E8F0',
+          textPrimary: '#0F172A',
+          textSecondary: '#64748B',
+        };
+        await updateClinicTheme(selectedTargetClinic, theme);
+        if (onUpdateMerchantColor) {
+          onUpdateMerchantColor(selectedTargetClinic, customColor);
+        }
+      }
+      showToast('Brand color saved to Supabase successfully!');
+    } catch (err) {
+      console.error('Failed to update theme in Supabase:', err);
+      showToast('Brand color updated locally!');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
-    <div className="flex-1 bg-slate-50 min-h-screen p-8">
+    <div className="flex-1 bg-slate-50 min-h-screen p-8 animate-in fade-in duration-200">
       {toastMessage && (
         <div className="fixed top-6 right-6 z-50 bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-2 text-sm font-medium animate-in fade-in">
           <Check size={16} className="text-emerald-400" />
@@ -34,11 +87,39 @@ export default function WhiteLabelSettings() {
         </div>
       )}
 
-      <h1 className="text-2xl font-bold text-slate-900 tracking-tight mb-1">White Label Settings</h1>
-      <p className="text-sm text-slate-400 mb-8">Customize your agency branding and configure custom domains.</p>
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight mb-1">White Label & Brand Settings</h1>
+          <p className="text-sm text-slate-400">Customize agency branding, clinic color palettes, and tenant themes.</p>
+        </div>
 
-      {/* Logo & Favicon row matching white label screenshot */}
-      <div className="grid grid-cols-2 gap-6 mb-6">
+        {merchants.length > 0 && (
+          <div className="flex items-center gap-2 bg-white px-3.5 py-2 rounded-xl border border-slate-200 shadow-2xs">
+            <span className="text-xs font-semibold text-slate-500">Target Tenant:</span>
+            <select
+              value={selectedTargetClinic}
+              onChange={(e) => {
+                setSelectedTargetClinic(e.target.value);
+                const found = merchants.find((m) => m.id === e.target.value);
+                if (found?.brandColor) {
+                  setSelectedColor(found.brandColor);
+                  setCustomColor(found.brandColor);
+                }
+              }}
+              className="text-xs font-bold text-slate-900 bg-transparent focus:outline-none"
+            >
+              {merchants.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+      </div>
+
+      {/* Logo & Favicon row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         {/* Logo */}
         <div className="bg-white rounded-2xl border border-slate-100 shadow-xs p-6 flex flex-col justify-between">
           <div>
@@ -47,8 +128,8 @@ export default function WhiteLabelSettings() {
                 <ImageIcon size={18} className="text-purple-600" />
               </div>
               <div>
-                <p className="text-sm font-bold text-slate-900">Logo</p>
-                <p className="text-xs text-slate-400">Your agency logo</p>
+                <p className="text-sm font-bold text-slate-900">Agency Logo</p>
+                <p className="text-xs text-slate-400">Your white-label agency logo</p>
               </div>
             </div>
 
@@ -59,8 +140,9 @@ export default function WhiteLabelSettings() {
               <div>
                 <p className="text-xs text-slate-400 mb-3">Upload a logo image (PNG, JPG, max 5MB)</p>
                 <button
-                  onClick={() => showToast('Logo updated successfully')}
-                  className="flex items-center gap-2 border border-slate-200 rounded-xl px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors shadow-xs"
+                  type="button"
+                  onClick={() => showToast('Agency logo updated successfully')}
+                  className="flex items-center gap-2 border border-slate-200 rounded-xl px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
                 >
                   <Upload size={14} className="text-slate-400" />
                   Change Logo
@@ -91,8 +173,9 @@ export default function WhiteLabelSettings() {
                 <p className="text-xs text-slate-400 mb-1">Upload a square icon image (PNG, JPG, max 5MB)</p>
                 <p className="text-xs text-slate-300 mb-3">Square icon used as browser tab favicon</p>
                 <button
+                  type="button"
                   onClick={() => showToast('Favicon updated successfully')}
-                  className="flex items-center gap-2 border border-slate-200 rounded-xl px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors shadow-xs"
+                  className="flex items-center gap-2 border border-slate-200 rounded-xl px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors shadow-xs cursor-pointer"
                 >
                   <Upload size={14} className="text-slate-400" />
                   Change Icon
@@ -103,32 +186,38 @@ export default function WhiteLabelSettings() {
         </div>
       </div>
 
-      {/* Brand Color */}
+      {/* Dynamic Brand Color Pickers */}
       <div className="bg-white rounded-2xl border border-slate-100 shadow-xs p-6 mb-6">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-pink-50 flex items-center justify-center">
-            <Palette size={18} className="text-pink-600" />
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-pink-50 flex items-center justify-center">
+              <Palette size={18} className="text-pink-600" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-slate-900">Live Brand Palette</p>
+              <p className="text-xs text-slate-400">Changes propagate live to the mobile app theme in Supabase</p>
+            </div>
           </div>
-          <div>
-            <p className="text-sm font-bold text-slate-900">Brand Color</p>
-            <p className="text-xs text-slate-400">Your primary agency brand color</p>
-          </div>
+          <span className="text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full flex items-center gap-1">
+            <Sparkles size={12} /> Live Theme Synced
+          </span>
         </div>
 
         <div className="flex items-center justify-between pt-2">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             {PRESET_COLORS.map((color) => (
               <button
                 key={color}
+                type="button"
                 onClick={() => {
                   setSelectedColor(color);
                   setCustomColor(color);
                 }}
-                className="w-9 h-9 rounded-xl flex items-center justify-center transition-transform hover:scale-110 shadow-xs"
+                className="w-10 h-10 rounded-xl flex items-center justify-center transition-transform hover:scale-110 shadow-xs cursor-pointer"
                 style={{ backgroundColor: color }}
               >
                 {selectedColor.toLowerCase() === color.toLowerCase() && (
-                  <Check size={16} className="text-white" strokeWidth={3} />
+                  <Check size={18} className="text-white" strokeWidth={3} />
                 )}
               </button>
             ))}
@@ -140,19 +229,22 @@ export default function WhiteLabelSettings() {
                 setCustomColor(e.target.value);
                 setSelectedColor(e.target.value);
               }}
-              className="w-9 h-9 rounded-xl border border-slate-200 cursor-pointer p-0.5 bg-white shadow-xs"
+              className="w-10 h-10 rounded-xl border border-slate-200 cursor-pointer p-0.5 bg-white shadow-xs"
             />
 
-            <span className="text-sm font-mono font-bold text-slate-700 uppercase">
+            <span className="text-sm font-mono font-bold text-slate-800 uppercase px-2 py-1 bg-slate-100 rounded-lg">
               {customColor}
             </span>
           </div>
 
           <button
-            onClick={() => showToast('Brand color saved!')}
-            className="flex items-center gap-1.5 px-4 py-2 bg-pink-500 hover:bg-pink-600 text-white rounded-xl text-xs font-semibold shadow-xs"
+            type="button"
+            onClick={handleSaveColor}
+            disabled={saving}
+            className="flex items-center gap-1.5 px-5 py-2.5 bg-pink-500 hover:bg-pink-600 text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer transition-all"
           >
-            <Check size={14} /> Save Color
+            {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+            <span>{saving ? 'Saving...' : 'Save Theme Color'}</span>
           </button>
         </div>
       </div>
@@ -164,8 +256,8 @@ export default function WhiteLabelSettings() {
             <Languages size={18} className="text-indigo-600" />
           </div>
           <div>
-            <p className="text-sm font-bold text-slate-900">Default Language</p>
-            <p className="text-xs text-slate-400">Set the default language for newly created merchants</p>
+            <p className="text-sm font-bold text-slate-900">Default Clinic Language</p>
+            <p className="text-xs text-slate-400">Set the default locale for newly provisioned tenant apps</p>
           </div>
         </div>
 
@@ -184,8 +276,9 @@ export default function WhiteLabelSettings() {
           </div>
 
           <button
+            type="button"
             onClick={() => showToast('Default language saved!')}
-            className="flex items-center gap-1.5 px-4 py-2 bg-pink-500 hover:bg-pink-600 text-white rounded-xl text-xs font-semibold shadow-xs"
+            className="flex items-center gap-1.5 px-4 py-2 bg-pink-500 hover:bg-pink-600 text-white rounded-xl text-xs font-semibold shadow-xs cursor-pointer"
           >
             <Check size={14} /> Save Language
           </button>

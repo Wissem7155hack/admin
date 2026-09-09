@@ -1,12 +1,18 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Check, Plus, Upload, ChevronRight } from 'lucide-react';
+import { Check, Plus, Upload, ChevronRight } from 'lucide-react';
 import EmptyState from './EmptyState';
 import SlideOverDrawer from './common/SlideOverDrawer';
-import { TeamMember } from '../types';
+import { useTeamMembers, uploadTeamAsset } from '../hooks/useSupabaseData';
 
-export default function UserSettings() {
+interface UserSettingsProps {
+  clinicId?: string;
+}
+
+export default function UserSettings({ clinicId }: UserSettingsProps) {
   const [activeTab, setActiveTab] = useState<'Team' | 'Notifications' | 'Payouts'>('Team');
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const { teamMembers, addTeamMember } = useTeamMembers(clinicId);
+  const [avatarUrl, setAvatarUrl] = useState('');
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [openAddDrawer, setOpenAddDrawer] = useState(false);
 
   React.useEffect(() => {
@@ -33,25 +39,46 @@ export default function UserSettings() {
     setTimeout(() => setToastMessage(null), 2500);
   };
 
-  const handleAddTeamMember = (e: React.FormEvent) => {
+  const handleAddTeamMember = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!firstName.trim()) return;
-    const newMember: TeamMember = {
-      id: Date.now().toString(),
-      firstName,
-      lastName,
-      akaName,
-      jobTitle: jobTitle || 'Specialist',
-      biography: bio,
-    };
-    setTeamMembers((prev) => [...prev, newMember]);
-    setFirstName('');
-    setLastName('');
-    setAkaName('');
-    setJobTitle('');
-    setBio('');
-    setOpenAddDrawer(false);
-    showToast('Team member added successfully!');
+    try {
+      await addTeamMember({
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        akaName: akaName.trim() || undefined,
+        jobTitle: jobTitle.trim() || 'Aesthetics Specialist',
+        biography: bio.trim() || undefined,
+        avatarUrl: avatarUrl || undefined,
+      });
+      setFirstName('');
+      setLastName('');
+      setAkaName('');
+      setJobTitle('');
+      setBio('');
+      setAvatarUrl('');
+      setOpenAddDrawer(false);
+      showToast('Team member saved to Supabase successfully!');
+    } catch (err) {
+      console.error('Failed to add team member:', err);
+      showToast('Error saving team member');
+    }
+  };
+
+  const handleAvatarFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setUploadingAvatar(true);
+      const url = await uploadTeamAsset(file);
+      setAvatarUrl(url);
+      showToast('Photo uploaded to team-and-blog bucket!');
+    } catch (err) {
+      console.error('Avatar upload failed:', err);
+      setAvatarUrl(URL.createObjectURL(file));
+    } finally {
+      setUploadingAvatar(false);
+    }
   };
 
   return (
@@ -241,13 +268,27 @@ export default function UserSettings() {
         <form id="team-form" onSubmit={handleAddTeamMember} className="space-y-6 text-xs">
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-2">Profile picture</label>
-            <div className="border border-dashed border-slate-200 rounded-2xl p-6 flex flex-col items-center justify-center bg-slate-50/50 hover:bg-slate-50 transition-colors cursor-pointer text-center">
-              <div className="w-9 h-9 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 mb-2">
-                <Upload size={16} />
-              </div>
-              <p className="text-xs font-semibold text-slate-700">Click to upload or drag and drop</p>
-              <p className="text-[11px] text-slate-400 mt-0.5">PNG or JPG (max. 1920x1080px)</p>
-            </div>
+            <label className="border border-dashed border-slate-200 rounded-2xl p-6 flex flex-col items-center justify-center bg-slate-50/50 hover:bg-slate-50 transition-colors cursor-pointer text-center relative overflow-hidden">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarFile}
+                className="hidden"
+              />
+              {avatarUrl ? (
+                <div className="w-14 h-14 rounded-full overflow-hidden mb-2 border-2 border-pink-500 shadow-sm">
+                  <img src={avatarUrl} alt="Practitioner" className="w-full h-full object-cover" />
+                </div>
+              ) : (
+                <div className="w-9 h-9 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 mb-2">
+                  <Upload size={16} />
+                </div>
+              )}
+              <p className="text-xs font-semibold text-slate-700">
+                {uploadingAvatar ? 'Uploading to team-and-blog bucket...' : avatarUrl ? 'Change practitioner photo' : 'Click to upload or drag and drop'}
+              </p>
+              <p className="text-[11px] text-slate-400 mt-0.5">PNG, JPG or WebP (max. 5MB)</p>
+            </label>
           </div>
 
           <div className="space-y-4">

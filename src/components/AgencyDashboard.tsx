@@ -25,7 +25,7 @@ interface AgencyDashboardProps {
   onAddMerchant: (merchant: Partial<Merchant>) => void;
   onToggleStatus: (merchantId: string) => void;
   onDeleteMerchant: (merchantId: string) => void;
-  onUpdateLanguage: (merchantId: string, language: string, useDefault: boolean) => void;
+  onUpdateLanguage: (merchantId: string, language: string, useDefault?: boolean) => void;
 }
 
 export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
@@ -46,7 +46,6 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
   const [deleteMerchantTarget, setDeleteMerchantTarget] = useState<Merchant | null>(null);
 
   const getClientCount = (m: Merchant) => (m.clientsCount !== undefined ? m.clientsCount : m.clients || 0);
-  const isVerified = (m: Merchant) => m.verified || m.status === 'verified';
   const isInfoRequired = (m: Merchant) => m.status === 'info-required';
   const isActive = (m: Merchant) => m.active !== false && m.status !== 'inactive';
 
@@ -137,7 +136,7 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-            Welcome back, Wissem! <span className="inline-block animate-bounce">👋</span>
+            Welcome back, Wissem! <span className="">👋</span>
           </h1>
           <p className="text-xs text-slate-500 mt-1">
             Here's what's happening with your agency today.
@@ -241,17 +240,15 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
             <div className="flex items-center border border-slate-200 rounded-lg p-0.5 bg-slate-50 shadow-xs">
               <button
                 onClick={() => setViewMode('list')}
-                className={`p-1.5 rounded-md text-xs transition-colors ${
-                  viewMode === 'list' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-700'
-                }`}
+                className={`p-1.5 rounded-md text-xs transition-colors ${viewMode === 'list' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-700'
+                  }`}
               >
                 <List size={15} />
               </button>
               <button
                 onClick={() => setViewMode('grid')}
-                className={`p-1.5 rounded-md text-xs transition-colors ${
-                  viewMode === 'grid' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-700'
-                }`}
+                className={`p-1.5 rounded-md text-xs transition-colors ${viewMode === 'grid' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-700'
+                  }`}
               >
                 <LayoutGrid size={15} />
               </button>
@@ -413,7 +410,7 @@ export const AgencyDashboard: React.FC<AgencyDashboardProps> = ({
         isOpen={!!languageModalMerchant}
         merchant={languageModalMerchant}
         onClose={() => setLanguageModalMerchant(null)}
-        onSave={onUpdateLanguage}
+        onSave={(merchantId, language) => onUpdateLanguage(merchantId, language)}
       />
       <DeleteMerchantModal
         isOpen={!!deleteMerchantTarget}

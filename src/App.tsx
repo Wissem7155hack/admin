@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { View, Merchant } from './types';
 import Sidebar from './components/Sidebar';
 import TopNavbar from './components/TopNavbar';
+import Login from './components/Login';
 import { AgencyDashboard } from './components/AgencyDashboard';
 import { MerchantDashboard } from './components/MerchantDashboard';
 import WhiteLabelSettings from './components/WhiteLabelSettings';
@@ -12,118 +13,69 @@ import AppBuilder from './components/AppBuilder/AppBuilder';
 import UserSettings from './components/UserSettings';
 import QrScanModal from './components/QrScanModal';
 import ViewAppModal from './components/ViewAppModal';
+import { useClinics } from './hooks/useSupabaseData';
 
 const initialMerchants: Merchant[] = [
   {
-    id: 'm-abela',
-    name: 'Abela Medical',
-    clients: 6,
-    clientsCount: 6,
-    active: true,
-    status: 'to-verify',
-    verified: false,
-    color: '#EC4899',
-    brandColor: '#EC4899',
-    language: 'English',
-    initials: 'AM',
-  },
-  {
-    id: 'm-avogadro',
-    name: 'Avogadro MedSpa',
-    clients: 3,
-    clientsCount: 3,
-    active: true,
-    status: 'verified',
-    verified: true,
-    color: '#3B82F6',
-    brandColor: '#3B82F6',
-    language: 'English',
-    initials: 'AV',
-  },
-  {
-    id: 'm-beauty2go',
-    name: 'Beauty2Go Clinic',
+    id: '11111111-1111-1111-1111-111111111111',
+    name: 'SLA Medical Clinic',
     clients: 14,
     clientsCount: 14,
     active: true,
     status: 'verified',
     verified: true,
-    color: '#8B5CF6',
-    brandColor: '#8B5CF6',
-    language: 'German',
-    initials: 'B2',
-  },
-  {
-    id: 'm-eva',
-    name: 'Eva Clinic Bath',
-    clients: 1,
-    clientsCount: 1,
-    active: true,
-    status: 'to-verify',
-    verified: false,
-    color: '#10B981',
-    brandColor: '#10B981',
+    color: '#111111',
+    brandColor: '#C5A880',
     language: 'English',
-    initials: 'EC',
+    initials: 'SLA',
+    logoUrl: 'assets/clinics logos/sla logo.png',
+    address: '3 Monton Grn, Worsley, Eccles, Manchester',
+    tagline: 'Flawless, radiant, and smooth skin enhances facial beauty.',
   },
   {
-    id: 'm-evolvmd',
-    name: 'EvolvMD Aesthetic Medicine',
+    id: '22222222-2222-2222-2222-222222222222',
+    name: 'Sage & Pure Aesthetics',
     clients: 8,
     clientsCount: 8,
     active: true,
     status: 'verified',
     verified: true,
-    color: '#F97316',
-    brandColor: '#F97316',
+    color: '#1C2826',
+    brandColor: '#7D9D8B',
     language: 'English',
-    initials: 'EV',
-  },
-  {
-    id: 'm-goodskin',
-    name: 'Good Skin Peterborough',
-    clients: 0,
-    clientsCount: 0,
-    active: true,
-    status: 'to-verify',
-    verified: false,
-    color: '#14B8A6',
-    brandColor: '#14B8A6',
-    language: 'English',
-    initials: 'GS',
-  },
-  {
-    id: 'm-hairless',
-    name: 'Hairlessskin-Luxemburg',
-    clients: 5,
-    clientsCount: 5,
-    active: true,
-    status: 'to-verify',
-    verified: false,
-    color: '#6366F1',
-    brandColor: '#6366F1',
-    language: 'French',
-    initials: 'HL',
-  },
-  {
-    id: 'm-harley',
-    name: 'Harley Skin And Laser',
-    clients: 22,
-    clientsCount: 22,
-    active: true,
-    status: 'verified',
-    verified: true,
-    color: '#EC4899',
-    brandColor: '#EC4899',
-    language: 'English',
-    initials: 'HS',
+    initials: 'SP',
+    logoUrl: 'assets/clinics logos/sage pure logo.png',
+    address: 'Harley Street, London',
+    tagline: 'Holistic clinical dermatology & regenerative aesthetics.',
   },
 ];
 
 export function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    return localStorage.getItem('nexcore_auth') === 'true';
+  });
+
+  const {
+    clinics: liveClinics,
+    addClinic,
+    deleteClinic,
+    updateClinicStatus,
+  } = useClinics();
+
   const [currentView, setCurrentView] = useState<View>('agency');
   const [merchants, setMerchants] = useState<Merchant[]>(initialMerchants);
   const [currentMerchant, setCurrentMerchant] = useState<Merchant>(initialMerchants[0]);
+
+  // Sync live Supabase clinics when available
+  useEffect(() => {
+    if (liveClinics && liveClinics.length > 0) {
+      setMerchants(liveClinics);
+      setCurrentMerchant((prev) => {
+        const found = liveClinics.find((c) => c.id === prev.id);
+        return found || liveClinics[0];
+      });
+    }
+  }, [liveClinics]);
 
   // Global Modals - closed by default
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
@@ -138,9 +90,23 @@ export function App() {
     setCurrentView('agency');
   };
 
-  const handleAddMerchant = (newMerchantData: Partial<Merchant>) => {
+  const handleSignOut = () => {
+    localStorage.removeItem('nexcore_auth');
+    setCurrentView('agency');
+    setIsAuthenticated(false);
+  };
+
+  const handleAddMerchant = async (newMerchantData: Partial<Merchant>) => {
+    try {
+      const created = await addClinic(newMerchantData);
+      if (created) {
+        console.log('Created clinic in Supabase:', created);
+      }
+    } catch (e) {
+      console.warn('Falling back to local state:', e);
+    }
     const newMerchant: Merchant = {
-      id: 'm-' + Math.random().toString(36).substr(2, 9),
+      id: 'm-' + Math.random().toString(36).substring(2, 9),
       name: newMerchantData.name || 'New Clinic',
       clients: 0,
       clientsCount: 0,
@@ -152,24 +118,36 @@ export function App() {
       language: newMerchantData.language || 'English',
       initials: (newMerchantData.name || 'NC').substring(0, 2).toUpperCase(),
     };
-    setMerchants([newMerchant, ...merchants]);
+    setMerchants((prev) => [newMerchant, ...prev]);
   };
 
-  const handleToggleStatus = (merchantId: string) => {
+  const handleToggleStatus = async (merchantId: string) => {
+    const target = merchants.find((m) => m.id === merchantId);
+    const newActive = target ? !target.active : true;
+    try {
+      await updateClinicStatus(merchantId, newActive);
+    } catch (e) {
+      console.warn('Failed to update status in Supabase:', e);
+    }
     setMerchants((prev) =>
       prev.map((m) =>
         m.id === merchantId
           ? {
-            ...m,
-            active: !m.active,
-            status: m.active ? 'inactive' : 'active',
-          }
+              ...m,
+              active: newActive,
+              status: newActive ? 'active' : 'inactive',
+            }
           : m
       )
     );
   };
 
-  const handleDeleteMerchant = (merchantId: string) => {
+  const handleDeleteMerchant = async (merchantId: string) => {
+    try {
+      await deleteClinic(merchantId);
+    } catch (e) {
+      console.warn('Failed to delete clinic from Supabase:', e);
+    }
     setMerchants((prev) => prev.filter((m) => m.id !== merchantId));
   };
 
@@ -178,6 +156,17 @@ export function App() {
       prev.map((m) => (m.id === merchantId ? { ...m, language } : m))
     );
   };
+
+  if (!isAuthenticated) {
+    return (
+      <Login
+        onLogin={() => {
+          localStorage.setItem('nexcore_auth', 'true');
+          setIsAuthenticated(true);
+        }}
+      />
+    );
+  }
 
   const isAgencyView =
     currentView === 'agency' || currentView === 'whitelabel' || currentView === 'settings';
@@ -195,14 +184,15 @@ export function App() {
         currentMerchant={currentMerchant}
         onSelectMerchant={handleSelectMerchant}
         onSwitchToAgency={handleSwitchToAgency}
+        onSignOut={handleSignOut}
       />
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Persistent Top Navbar across the entire app */}
         <TopNavbar
-          greeting={isAgencyView ? 'Welcome back, Wissem 👋🏻' : `Hello ${currentMerchant?.name || 'Lunè Luxe HeadSpa'} 👋🏻`}
-          userName={isAgencyView ? 'Wissem' : currentMerchant?.name || 'Lunè Luxe HeadSpa'}
+          greeting={isAgencyView ? '' : `${currentMerchant?.name || ''} 👋🏻`}
+          userName={isAgencyView ? '' : currentMerchant?.name || ''}
           onOpenQrScan={() => setIsQrModalOpen(true)}
           onOpenUserSettings={() => setCurrentView('user_settings')}
         />
@@ -221,26 +211,45 @@ export function App() {
               />
             )}
 
-            {currentView === 'whitelabel' && <WhiteLabelSettings />}
-            {currentView === 'settings' && <WhiteLabelSettings />}
+            {(currentView === 'whitelabel' || currentView === 'settings') && (
+              <WhiteLabelSettings
+                currentMerchant={currentMerchant}
+                merchants={merchants}
+                onUpdateMerchantColor={(id, color) => {
+                  setMerchants((prev) =>
+                    prev.map((m) => (m.id === id ? { ...m, color, brandColor: color } : m))
+                  );
+                  if (currentMerchant.id === id) {
+                    setCurrentMerchant((prev) => ({ ...prev, color, brandColor: color }));
+                  }
+                }}
+              />
+            )}
 
             {currentView === 'merchant' && (
               <MerchantDashboard currentMerchant={currentMerchant} />
             )}
 
-            {currentView === 'clients' && <ClientProfiles />}
-            {currentView === 'shop' && <ShopSummary />}
+            {currentView === 'clients' && <ClientProfiles clinicId={currentMerchant.id} />}
+            {currentView === 'shop' && <ShopSummary clinicId={currentMerchant.id} />}
             {currentView === 'memberships' && <MembershipsOverview />}
 
             {currentView === 'appbuilder' && (
               <AppBuilder
                 merchantName={currentMerchant.name}
+                currentMerchant={currentMerchant}
                 onOpenViewApp={() => setIsViewAppModalOpen(true)}
                 onOpenQrScan={() => setIsQrModalOpen(true)}
+                onUpdateClinic={(updated) => {
+                  setMerchants((prev) =>
+                    prev.map((m) => (m.id === currentMerchant.id ? { ...m, ...updated } : m))
+                  );
+                  setCurrentMerchant((prev) => ({ ...prev, ...updated }));
+                }}
               />
             )}
 
-            {currentView === 'user_settings' && <UserSettings />}
+            {currentView === 'user_settings' && <UserSettings clinicId={currentMerchant.id} />}
           </div>
         </main>
       </div>
