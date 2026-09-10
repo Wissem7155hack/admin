@@ -3,7 +3,7 @@ import { Search, ChevronDown, Check, Mail, Phone, Calendar, Sparkles, CreditCard
 import EmptyState from './EmptyState';
 import SlideOverDrawer from './common/SlideOverDrawer';
 import { ClientProfile } from '../types';
-import { useClientProfiles } from '../hooks/useSupabaseData';
+import { useClientProfiles, handleImageError } from '../hooks/useSupabaseData';
 
 interface ClientProfilesProps {
   clinicId?: string;
@@ -108,7 +108,7 @@ export default function ClientProfiles({ clinicId }: ClientProfilesProps) {
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-slate-100 overflow-hidden flex items-center justify-center font-bold text-slate-600 flex-shrink-0 text-sm border border-slate-200">
                       {client.avatar ? (
-                        <img src={client.avatar} alt={client.name} className="w-full h-full object-cover" />
+                        <img src={client.avatar} alt={client.name} onError={handleImageError} className="w-full h-full object-cover" />
                       ) : (
                         client.name.substring(0, 2).toUpperCase()
                       )}
@@ -184,7 +184,7 @@ export default function ClientProfiles({ clinicId }: ClientProfilesProps) {
             <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
               <div className="w-14 h-14 rounded-full bg-slate-200 overflow-hidden flex items-center justify-center font-bold text-lg text-slate-700 border-2 border-white shadow-sm flex-shrink-0">
                 {selectedClient.avatar ? (
-                  <img src={selectedClient.avatar} alt={selectedClient.name} className="w-full h-full object-cover" />
+                  <img src={selectedClient.avatar} alt={selectedClient.name} onError={handleImageError} className="w-full h-full object-cover" />
                 ) : (
                   selectedClient.name.substring(0, 2).toUpperCase()
                 )}

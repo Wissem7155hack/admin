@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { MoreVertical, Plus, Globe } from 'lucide-react';
+import { MoreVertical, Plus, Globe, Sparkles } from 'lucide-react';
 import EmptyState from '../EmptyState';
 import SlideOverDrawer from '../common/SlideOverDrawer';
+import IPhoneLockScreen from '../common/IPhoneLockScreen';
 import { AutomatedOffer, OneTimeOffer } from '../../types';
 import { supabase } from '../../lib/supabaseClient';
+import { handleImageError } from '../../hooks/useSupabaseData';
 
 const SUPABASE_STORAGE_URL = 'https://jndcmymcnivessmvzpzc.supabase.co/storage/v1/object/public/offer-media/automated';
 
@@ -420,36 +422,29 @@ export default function OffersTab({ clinicId }: OffersTabProps) {
 
             <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Preview</span>
 
-            {/* Smartphone Frame */}
-            <div className="w-[270px] h-[520px] bg-[#1E293B] rounded-[42px] p-3 shadow-2xl border-4 border-slate-800 relative flex flex-col overflow-hidden">
-              {/* Top Speaker/Camera notch */}
-              <div className="w-24 h-4 bg-[#1E293B] rounded-b-xl mx-auto absolute top-3 left-1/2 -translate-x-1/2 z-20" />
-
-              {/* Screen container */}
-              <div className="w-full h-full bg-white rounded-[32px] overflow-hidden flex flex-col pt-8 px-4 pb-4">
-                <div className="text-center my-3">
-                  <h3 className="text-sm font-bold text-slate-900 tracking-tight">
+            {/* Smartphone Frame with iPhone CSS */}
+            <IPhoneLockScreen className="my-2">
+              <div className="w-full h-full bg-white flex flex-col pt-8 px-3.5 pb-4">
+                <div className="text-center my-2">
+                  <h3 className="text-xs font-bold text-slate-900 tracking-tight">
                     {selectedOffer.occasion === 'New Years' ? 'New Year, new YOU!' : selectedOffer.bannerTitle}
                   </h3>
-                  <p className="text-[11px] text-slate-500 mt-1">
+                  <p className="text-[10px] text-slate-500 mt-0.5 line-clamp-2">
                     {selectedOffer.subtitle}
                   </p>
                 </div>
 
                 {/* Offer Image Card inside phone */}
-                <div className="mt-2 rounded-2xl overflow-hidden shadow-xs border border-slate-100 bg-slate-900 aspect-[4/3] relative">
+                <div className="mt-1 rounded-xl overflow-hidden shadow-xs border border-slate-100 bg-slate-900 aspect-[4/3] relative flex-shrink-0">
                   <img
                     src={selectedOffer.bannerImage}
                     alt={selectedOffer.occasion}
                     className="w-full h-full object-cover transition-opacity duration-300"
-                    onError={(e) => {
-                      // Fallback if network issue
-                      (e.target as HTMLImageElement).src = '/images/automated_offers2Fwebapp2Fnew_year.webp';
-                    }}
+                    onError={handleImageError}
                   />
                 </div>
               </div>
-            </div>
+            </IPhoneLockScreen>
           </div>
 
           {/* Right Column: Occasions Table (8 cols matching Photo 3) */}
@@ -482,9 +477,7 @@ export default function OffersTab({ clinicId }: OffersTabProps) {
                         src={offer.bannerImage}
                         alt={offer.occasion}
                         className="w-10 h-8 rounded-lg object-cover bg-slate-900 flex-shrink-0 shadow-2xs border border-slate-200"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = '/images/automated_offers2Fwebapp2Fnew_year.webp';
-                        }}
+                        onError={handleImageError}
                       />
                       <span className="text-xs font-semibold text-slate-900 truncate">
                         {offer.occasion}
@@ -535,45 +528,107 @@ export default function OffersTab({ clinicId }: OffersTabProps) {
 
       {/* ONE-TIME OFFERS VIEW */}
       {offersMode === 'One-Time offers' && (
-        <div className="bg-white rounded-3xl border border-slate-100 shadow-xs p-8 min-h-[500px] flex flex-col justify-center items-center">
-          {oneTimeOffers.length === 0 ? (
-            <EmptyState
-              title="No one-time offers created"
-              description="Launch flash discounts and limited-window promotions to boost clinic bookings."
-              action={{
-                label: '+ Create one-time offer',
-                onClick: () => setOpenOneTimeDrawer(true),
-              }}
-            />
-          ) : (
-            <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {oneTimeOffers.map((oto) => (
-                <div key={oto.id} className="rounded-2xl border border-slate-200 overflow-hidden shadow-xs bg-white">
-                  <div
-                    className="p-4 text-white flex items-center justify-between"
-                    style={{ backgroundColor: oto.bannerBgColor }}
-                  >
-                    <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider bg-black/20 px-2 py-0.5 rounded">
-                        {oto.visibility}
-                      </span>
-                      <h4 className="text-sm font-bold mt-1">{oto.headline}</h4>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-lg font-black">{oto.discountValue}% OFF</span>
-                    </div>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          {/* Left Column: Phone Simulation Preview for One-Time Offer */}
+          <div className="lg:col-span-4 flex flex-col items-center">
+            {/* Notification Preview Card */}
+            <div className="w-full max-w-[320px] bg-white rounded-2xl border border-slate-200/80 shadow-xs p-4 mb-3 flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-pink-50 flex items-center justify-center flex-shrink-0 text-pink-500">
+                <Sparkles size={18} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h4 className="text-xs font-bold text-slate-900 truncate">
+                  {oneTimeOffers[0]?.headline || 'Flash Special Offer'}
+                </h4>
+                <p className="text-[11px] text-slate-500 truncate">
+                  {oneTimeOffers[0]?.message || 'Exclusive clinic discount available now!'}
+                </p>
+              </div>
+            </div>
+
+            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Preview</span>
+
+            {/* Smartphone Frame with iPhone Lock Screen */}
+            <IPhoneLockScreen className="my-2">
+              <div className="w-full h-full bg-white flex flex-col pt-8 px-3.5 pb-4">
+                <div className="text-center my-2">
+                  <span className="text-[9px] font-extrabold uppercase tracking-wider text-pink-600 bg-pink-50 px-2 py-0.5 rounded-full">
+                    {oneTimeOffers[0]?.visibility || 'Special'} Discount
+                  </span>
+                  <h3 className="text-xs font-bold text-slate-900 tracking-tight mt-1">
+                    {oneTimeOffers[0]?.headline || 'Summer Flash Sale'}
+                  </h3>
+                  <p className="text-[10px] text-slate-500 mt-0.5 line-clamp-2">
+                    {oneTimeOffers[0]?.message || 'Enjoy limited-time discount on top treatments.'}
+                  </p>
+                </div>
+
+                <div
+                  className="mt-2 rounded-2xl p-4 text-white flex flex-col justify-between aspect-[16/10] relative shadow-xs"
+                  style={{ backgroundColor: oneTimeOffers[0]?.bannerBgColor || '#EC4899' }}
+                >
+                  <div className="flex justify-between items-start">
+                    <span className="text-[9px] font-bold bg-black/20 px-2 py-0.5 rounded uppercase">
+                      {oneTimeOffers[0]?.discountMode === 'Percentage' ? `${oneTimeOffers[0]?.discountValue}% OFF` : `$${oneTimeOffers[0]?.discountValue} OFF`}
+                    </span>
                   </div>
-                  <div className="p-4">
-                    <p className="text-xs text-slate-600 line-clamp-2">{oto.message || 'Limited-time clinic special promotion.'}</p>
-                    <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
-                      <span>Starts {oto.startDate || 'Now'}</span>
-                      <span>Expires in {oto.expiresInDays}d</span>
-                    </div>
+                  <div>
+                    <p className="text-xs font-black">{oneTimeOffers[0]?.headline || 'Limited Promotion'}</p>
+                    <p className="text-[9px] text-white/80 mt-0.5">Expires in {oneTimeOffers[0]?.expiresInDays || 3} days</p>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
+
+                <button
+                  type="button"
+                  className="mt-4 w-full py-2 bg-pink-500 text-white rounded-xl text-xs font-bold shadow-sm"
+                >
+                  Claim Offer Now
+                </button>
+              </div>
+            </IPhoneLockScreen>
+          </div>
+
+          {/* Right Column: One-time Offers Cards */}
+          <div className="lg:col-span-8 bg-white rounded-2xl border border-slate-200/80 shadow-xs p-6">
+            {oneTimeOffers.length === 0 ? (
+              <EmptyState
+                title="No one-time offers created"
+                description="Launch flash discounts and limited-window promotions to boost clinic bookings."
+                action={{
+                  label: '+ Create one-time offer',
+                  onClick: () => setOpenOneTimeDrawer(true),
+                }}
+              />
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {oneTimeOffers.map((oto) => (
+                  <div key={oto.id} className="rounded-2xl border border-slate-200 overflow-hidden shadow-xs bg-white hover:shadow-md transition-all">
+                    <div
+                      className="p-4 text-white flex items-center justify-between"
+                      style={{ backgroundColor: oto.bannerBgColor }}
+                    >
+                      <div>
+                        <span className="text-[10px] font-bold uppercase tracking-wider bg-black/20 px-2 py-0.5 rounded">
+                          {oto.visibility}
+                        </span>
+                        <h4 className="text-sm font-bold mt-1">{oto.headline}</h4>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-lg font-black">{oto.discountValue}% OFF</span>
+                      </div>
+                    </div>
+                    <div className="p-4">
+                      <p className="text-xs text-slate-600 line-clamp-2">{oto.message || 'Limited-time clinic special promotion.'}</p>
+                      <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
+                        <span>Starts {oto.startDate || 'Now'}</span>
+                        <span>Expires in {oto.expiresInDays}d</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 

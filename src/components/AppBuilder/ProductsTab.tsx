@@ -11,13 +11,16 @@ import {
   ChevronDown,
   ChevronUp,
   PlusCircle,
+  GripVertical,
+  X,
 } from 'lucide-react';
 import TagSelector from './TagSelector';
 import EmptyState from '../EmptyState';
 import SlideOverDrawer from '../common/SlideOverDrawer';
 import ImageUploadDropzone from '../common/ImageUploadDropzone';
 import { Product } from '../../types';
-import { useTreatments, TreatmentRecord, useTeamMembers } from '../../hooks/useSupabaseData';
+import { useTreatments, TreatmentRecord, useTeamMembers, uploadToBucket, handleImageError } from '../../hooks/useSupabaseData';
+import { supabase } from '../../lib/supabaseClient';
 
 const SERVICE_UNIT_TYPES = [
   'Select unit type',
@@ -28,6 +31,91 @@ const SERVICE_UNIT_TYPES = [
   'Vial',
   'Package',
   'Area',
+];
+
+const INITIAL_PRODUCTS: Product[] = [
+  {
+    id: 'prod-1',
+    name: 'HydraFacial Deluxe',
+    durationMinutes: 45,
+    description:
+      'Deeply cleanses, extracts, and hydrates the skin utilizing super serums filled with antioxidants, peptides, and hyaluronic acid.',
+    schedulingUrl: 'https://calendly.com/sample',
+    tags: ['Hydration', 'Glow', 'Deep Cleanse'],
+    serviceUnitType: 'Treatment',
+    pricingModel: 'Individually',
+    price: 150,
+    maxQuantity: 1,
+    photoUrl: 'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?auto=format&fit=crop&q=80&w=600',
+    beforeInstructions: 'Avoid retinoids for 48 hours prior to treatment.',
+    afterInstructions: 'Apply broad spectrum SPF 50 and keep skin hydrated.',
+    requiresConsultation: false,
+    excludeCashBalance: false,
+    hiddenFromShop: false,
+    clientResults: [
+      {
+        photoUrl: 'https://jndcmymcnivessmvzpzc.supabase.co/storage/v1/object/public/membership-media/client-results/before_after.webp',
+        testimonial: 'My skin has never felt softer or looked more radiant!',
+      },
+    ],
+  },
+  {
+    id: 'prod-2',
+    name: 'Microneedling Collagen Boost',
+    durationMinutes: 60,
+    description:
+      'State-of-the-art micro-needling procedure stimulating natural collagen and elastin synthesis for fine lines, scarring, and pores.',
+    schedulingUrl: 'https://calendly.com/sample',
+    tags: ['Collagen', 'Firming', 'Texture'],
+    serviceUnitType: 'Session',
+    pricingModel: 'Individually',
+    price: 220,
+    maxQuantity: 1,
+    photoUrl: 'https://images.unsplash.com/photo-1512290900672-1f02e60f0898?auto=format&fit=crop&q=80&w=600',
+    beforeInstructions: 'Arrive with clear, clean skin. Avoid direct sun exposure.',
+    afterInstructions: 'Use gentle cleanser only for the first 24 hours.',
+    requiresConsultation: true,
+    excludeCashBalance: false,
+    hiddenFromShop: false,
+  },
+  {
+    id: 'prod-3',
+    name: 'Clinical Chemical Peel',
+    durationMinutes: 30,
+    description:
+      'Targeted resurfacing peel to accelerate cell turnover, diminish hyperpigmentation, and restore uniform glow.',
+    schedulingUrl: 'https://calendly.com/sample',
+    tags: ['Radiance', 'Exfoliation', 'Even Tone'],
+    serviceUnitType: 'Treatment',
+    pricingModel: 'Individually',
+    price: 130,
+    maxQuantity: 1,
+    photoUrl: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&q=80&w=600',
+    beforeInstructions: 'Discontinue exfoliating acids 3 days prior.',
+    afterInstructions: 'Do not peel or scrub flaking skin. Moisturize frequently.',
+    requiresConsultation: false,
+    excludeCashBalance: false,
+    hiddenFromShop: false,
+  },
+  {
+    id: 'prod-4',
+    name: 'Laser Skin Resurfacing',
+    durationMinutes: 60,
+    description:
+      'Advanced fractional laser therapy to dramatically improve deep texture, tone, and skin firmness.',
+    schedulingUrl: 'https://calendly.com/sample',
+    tags: ['Anti-Aging', 'Resurfacing', 'Laser'],
+    serviceUnitType: 'Treatment',
+    pricingModel: 'Individually',
+    price: 350,
+    maxQuantity: 1,
+    photoUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=600',
+    beforeInstructions: 'No active tanning 2 weeks prior.',
+    afterInstructions: 'Apply recovery soothing balm regularly.',
+    requiresConsultation: true,
+    excludeCashBalance: false,
+    hiddenFromShop: false,
+  },
 ];
 
 interface ProductsTabProps {
@@ -42,16 +130,23 @@ export default function ProductsTab({ clinicId }: ProductsTabProps) {
     addTreatment,
     updateTreatment,
     deleteTreatment,
+    reorderTreatments,
   } = useTreatments(clinicId);
   const { teamMembers } = useTeamMembers(clinicId);
   const [selectedPractitionerId, setSelectedPractitionerId] = useState('');
 
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
   const [search, setSearch] = useState('');
   const [openDrawer, setOpenDrawer] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+
+  // Drag-and-drop reordering state
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const [, setReorderSaving] = useState(false);
+  const [reorderError, setReorderError] = useState<string | null>(null);
 
   const isEditMode = editingProduct !== null;
 
@@ -76,8 +171,13 @@ export default function ProductsTab({ clinicId }: ProductsTabProps) {
   const [treatmentImage, setTreatmentImage] = useState('');
   const [beforeInstructions, setBeforeInstructions] = useState('');
   const [afterInstructions, setAfterInstructions] = useState('');
-  const [clientResultPhoto, setClientResultPhoto] = useState('');
-  const [clientTestimonial, setClientTestimonial] = useState('');
+  interface TreatmentClientResult {
+    id: string;
+    photoUrl: string;
+    testimonial: string;
+  }
+  const [clientResultsList, setClientResultsList] = useState<TreatmentClientResult[]>([]);
+  const [uploadingTreatmentResultId, setUploadingTreatmentResultId] = useState<string | null>(null);
   const [consultationWarning, setConsultationWarning] = useState(false);
   const [cashBalanceExclusion, setCashBalanceExclusion] = useState(false);
   const [otherOptionsOpen, setOtherOptionsOpen] = useState(true);
@@ -144,8 +244,7 @@ export default function ProductsTab({ clinicId }: ProductsTabProps) {
     setTreatmentImage('');
     setBeforeInstructions('');
     setAfterInstructions('');
-    setClientResultPhoto('');
-    setClientTestimonial('');
+    setClientResultsList([]);
     setSelectedTags([]);
     setServiceUnitType('Select unit type');
     setPricingModel('Individually');
@@ -173,8 +272,15 @@ export default function ProductsTab({ clinicId }: ProductsTabProps) {
     setCashBalanceExclusion(product.excludeCashBalance || false);
     setHideFromShop(product.hiddenFromShop || false);
     if (product.clientResults && product.clientResults.length > 0) {
-      setClientResultPhoto(product.clientResults[0].photoUrl || '');
-      setClientTestimonial(product.clientResults[0].testimonial || '');
+      setClientResultsList(
+        product.clientResults.map((r: any, idx: number) => ({
+          id: r.id || (Date.now() + idx).toString(),
+          photoUrl: r.photoUrl || r.photo_url || r.image || '',
+          testimonial: r.testimonial || r.text || '',
+        }))
+      );
+    } else {
+      setClientResultsList([]);
     }
     setOpenDrawer(true);
   };
@@ -187,6 +293,78 @@ export default function ProductsTab({ clinicId }: ProductsTabProps) {
   const closeDrawer = () => {
     setOpenDrawer(false);
     setTimeout(resetForm, 320);
+  };
+
+  
+  const persistClientResults = async (updatedList: any[]) => {
+    if (editingProduct?.id) {
+      try {
+        const sanitized = updatedList
+          .filter((r) => r.photoUrl || (r.testimonial && r.testimonial.trim()) || (r.title && r.title.trim()))
+          .map((r) => ({
+            id: r.id,
+            photoUrl: r.photoUrl,
+            title: r.title || '',
+            description: r.testimonial || r.description || '',
+            testimonial: r.testimonial || r.description || '',
+          }));
+        await supabase
+          .from('treatments')
+          .update({ client_results: sanitized })
+          .eq('id', editingProduct.id);
+        setProducts((prev) =>
+          prev.map((p) => (p.id === editingProduct.id ? { ...p, clientResults: sanitized } : p))
+        );
+      } catch (err) {
+        console.error('Failed to persist client_results to Supabase:', err);
+      }
+    }
+  };
+
+  const handleAddClientResult = () => {
+    setClientResultsList((prev) => [
+      ...prev,
+      {
+        id: Date.now().toString(),
+        photoUrl: '',
+        testimonial: '',
+      },
+    ]);
+  };
+
+  const handleDeleteClientResult = (id: string) => {
+    const updated = clientResultsList.filter((r) => r.id !== id);
+    setClientResultsList(updated);
+    persistClientResults(updated);
+  };
+
+  const handleClientResultPhotoUpload = async (id: string, file: File) => {
+    try {
+      setUploadingTreatmentResultId(id);
+      let url = '';
+      try {
+        url = await uploadToBucket('treatment-media', file, 'client-results');
+      } catch {
+        url = URL.createObjectURL(file);
+      }
+      const updated = clientResultsList.map((r) => (r.id === id ? { ...r, photoUrl: url } : r));
+      setClientResultsList(updated);
+      persistClientResults(updated);
+    } finally {
+      setUploadingTreatmentResultId(null);
+    }
+  };
+
+  const handleClearClientResultPhoto = (id: string) => {
+    setClientResultsList((prev) =>
+      prev.map((r) => (r.id === id ? { ...r, photoUrl: '' } : r))
+    );
+  };
+
+  const handleClientResultTestimonialChange = (id: string, text: string) => {
+    const updated = clientResultsList.map((r) => (r.id === id ? { ...r, testimonial: text } : r));
+    setClientResultsList(updated);
+    persistClientResults(updated);
   };
 
   const handleCreateProduct = async (e: React.FormEvent) => {
@@ -218,7 +396,7 @@ export default function ProductsTab({ clinicId }: ProductsTabProps) {
         requires_consultation: consultationWarning,
         restrict_cash_balance: cashBalanceExclusion,
         is_hidden: hideFromShop,
-        client_results: clientTestimonial || clientResultPhoto ? [{ photoUrl: clientResultPhoto, testimonial: clientTestimonial }] : [],
+        client_results: clientResultsList.filter((r) => r.photoUrl || r.testimonial.trim()),
       };
 
       let createdId = Date.now().toString();
@@ -249,7 +427,7 @@ export default function ProductsTab({ clinicId }: ProductsTabProps) {
         requiresConsultation: consultationWarning,
         excludeCashBalance: cashBalanceExclusion,
         hiddenFromShop: hideFromShop,
-        clientResults: clientTestimonial || clientResultPhoto ? [{ photoUrl: clientResultPhoto, testimonial: clientTestimonial }] : undefined,
+        clientResults: clientResultsList.filter((r) => r.photoUrl || r.testimonial.trim()),
       };
 
       setProducts((prev) => [newProduct, ...prev]);
@@ -291,7 +469,7 @@ export default function ProductsTab({ clinicId }: ProductsTabProps) {
           requires_consultation: consultationWarning,
           restrict_cash_balance: cashBalanceExclusion,
           is_hidden: hideFromShop,
-          client_results: clientTestimonial || clientResultPhoto ? [{ photoUrl: clientResultPhoto, testimonial: clientTestimonial }] : [],
+          client_results: clientResultsList.filter((r) => r.photoUrl || r.testimonial.trim()),
         });
       }
 
@@ -315,7 +493,7 @@ export default function ProductsTab({ clinicId }: ProductsTabProps) {
                 requiresConsultation: consultationWarning,
                 excludeCashBalance: cashBalanceExclusion,
                 hiddenFromShop: hideFromShop,
-                clientResults: clientTestimonial || clientResultPhoto ? [{ photoUrl: clientResultPhoto, testimonial: clientTestimonial }] : p.clientResults,
+                clientResults: clientResultsList.filter((r) => r.photoUrl || r.testimonial.trim()),
               }
             : p
         )
@@ -347,6 +525,48 @@ export default function ProductsTab({ clinicId }: ProductsTabProps) {
     (p.tags && p.tags.some((t) => t.toLowerCase().includes(search.toLowerCase())))
   );
 
+  // Handle dropping a dragged product onto another card position.
+  // Persists the full new order to the database via sort_order indexes.
+  const handleDropOnProduct = async (targetId: string) => {
+    const sourceId = dragId;
+    setDragId(null);
+    setDragOverId(null);
+    if (!sourceId || sourceId === targetId) return;
+
+    // Reorder the local list first (optimistic)
+    const reordered = [...products];
+    const fromIndex = reordered.findIndex((p) => p.id === sourceId);
+    const toIndex = reordered.findIndex((p) => p.id === targetId);
+    if (fromIndex === -1 || toIndex === -1) return;
+
+    const [moved] = reordered.splice(fromIndex, 1);
+    reordered.splice(toIndex, 0, moved);
+    setProducts(reordered);
+
+    // Persist new indexes to Supabase
+    if (!clinicId || !reorderTreatments) return;
+    setReorderSaving(true);
+    setReorderError(null);
+    try {
+      await reorderTreatments(reordered.map((p) => p.id));
+    } catch (err: any) {
+      console.error('Failed to persist product order:', err);
+      setReorderError('Could not save the new order. Please refresh and try again.');
+      // Revert to the last known server order
+      if (supabaseTreatments) {
+        const serverIds = new Set(supabaseTreatments.map((t) => t.id));
+        const fallback = [...reordered].sort(
+          (a, b) =>
+            (serverIds.has(a.id) ? supabaseTreatments.find((t) => t.id === a.id)!.sort_order ?? 0 : 0) -
+            (serverIds.has(b.id) ? supabaseTreatments.find((t) => t.id === b.id)!.sort_order ?? 0 : 0)
+        );
+        setProducts(fallback);
+      }
+    } finally {
+      setReorderSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* Products Section Header matching Screenshot */}
@@ -376,6 +596,12 @@ export default function ProductsTab({ clinicId }: ProductsTabProps) {
         </div>
       </div>
 
+      {reorderError && (
+        <div className="flex items-center gap-2 text-xs text-rose-600 bg-rose-50 border border-rose-100 rounded-xl px-4 py-2.5">
+          <span>{reorderError}</span>
+        </div>
+      )}
+
       {treatmentsLoading && products.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-24 bg-white rounded-3xl border border-slate-100">
           <Loader2 size={32} className="animate-spin text-pink-500 mb-2" />
@@ -396,7 +622,35 @@ export default function ProductsTab({ clinicId }: ProductsTabProps) {
           {filteredProducts.map((p) => (
             <div
               key={p.id}
-              className="bg-white rounded-2xl border border-slate-200/80 shadow-2xs hover:shadow-md transition-all overflow-hidden flex flex-col justify-between group relative"
+              draggable
+              onDragStart={(e) => {
+                setDragId(p.id);
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', p.id);
+              }}
+              onDragEnd={() => {
+                setDragId(null);
+                setDragOverId(null);
+              }}
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                if (dragOverId !== p.id) setDragOverId(p.id);
+              }}
+              onDragLeave={() => {
+                if (dragOverId === p.id) setDragOverId(null);
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                handleDropOnProduct(p.id);
+              }}
+              className={`bg-white rounded-2xl border shadow-2xs hover:shadow-md transition-all overflow-hidden flex flex-col justify-between group relative cursor-grab active:cursor-grabbing ${
+                dragId === p.id
+                  ? 'opacity-40 border-pink-300 ring-2 ring-pink-300/60'
+                  : dragOverId === p.id
+                    ? 'border-pink-400 ring-2 ring-pink-300/70 scale-[1.02]'
+                    : 'border-slate-200/80'
+              }`}
             >
               <div>
                 {/* Image on top: wide aspect ratio with 3-dots button */}
@@ -426,6 +680,11 @@ export default function ProductsTab({ clinicId }: ProductsTabProps) {
                   >
                     <MoreVertical size={15} />
                   </button>
+
+                  {/* Drag handle: grab anywhere on the card to reorder */}
+                  <div className="absolute top-2.5 left-2.5 w-7 h-7 rounded-full bg-white/95 shadow-md flex items-center justify-center z-10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                    <GripVertical size={14} className="text-slate-500" />
+                  </div>
 
                   {/* Dropdown Menu matching Card 3 in photo */}
                   {menuOpenId === p.id && (
@@ -509,7 +768,7 @@ export default function ProductsTab({ clinicId }: ProductsTabProps) {
         isOpen={openDrawer}
         onClose={closeDrawer}
         title={isEditMode ? 'Edit product' : 'Create a product'}
-        maxWidth="max-w-[540px]"
+        maxWidth="max-w-[520px]"
         footer={
           <>
             <button
@@ -826,61 +1085,132 @@ export default function ProductsTab({ clinicId }: ProductsTabProps) {
           {/* Section 3: Client results (optional) (Matching Photo 2) */}
           <div className="border-t border-slate-100 pt-5 space-y-3">
             <div className="flex items-center justify-between">
-              <h4 className="text-sm font-bold text-slate-800">Client results (optional)</h4>
+              <div>
+                <h4 className="text-sm font-bold text-slate-800">Client results (optional)</h4>
+                <p className="text-[11px] text-slate-400 mt-0.5">Showcase verified before & after transformations for this treatment</p>
+              </div>
               <button
                 type="button"
-                className="flex items-center gap-1.5 px-3.5 py-2 border border-slate-200 rounded-full text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer shadow-sm bg-white"
+                onClick={handleAddClientResult}
+                className="flex items-center gap-1.5 px-3.5 py-2 border border-slate-200 rounded-full text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer shadow-sm bg-white"
               >
                 <PlusCircle size={14} className="text-slate-500" />
                 <span>Add client result</span>
               </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <label className="block text-sm font-semibold text-slate-700">Before / After photo</label>
-                <div
-                  onClick={() => {
-                    const input = document.createElement('input');
-                    input.type = 'file';
-                    input.accept = 'image/*';
-                    input.onchange = (ev: any) => {
-                      const file = ev.target.files?.[0];
-                      if (file) {
-                        setClientResultPhoto(URL.createObjectURL(file));
-                      }
-                    };
-                    input.click();
-                  }}
-                  className="border border-dashed border-slate-200 rounded-2xl p-4 flex flex-col items-center justify-center bg-slate-50/40 hover:bg-slate-50 transition-colors cursor-pointer text-center min-h-[120px] relative overflow-hidden group shadow-sm"
+            {clientResultsList.length === 0 ? (
+              <div className="border border-dashed border-slate-200 rounded-2xl p-6 text-center bg-slate-50/50">
+                <p className="text-xs font-semibold text-slate-600">No client results added yet</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">Show off before & after transformations to boost bookings</p>
+                <button
+                  type="button"
+                  onClick={handleAddClientResult}
+                  className="mt-3 px-4 py-1.5 bg-pink-500 hover:bg-pink-600 text-white rounded-full text-xs font-semibold shadow-xs transition-all cursor-pointer"
                 >
-                  {clientResultPhoto ? (
-                    <img src={clientResultPhoto} alt="Result" className="absolute inset-0 w-full h-full object-cover" />
-                  ) : (
-                    <>
-                      <div className="w-9 h-9 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 mb-1.5 shadow-sm">
-                        <UploadCloud size={17} />
-                      </div>
-                      <p className="text-xs font-semibold text-slate-700 leading-tight">
-                        Click to upload or drag and drop
-                      </p>
-                      <p className="text-[11px] text-slate-400 mt-0.5">PNG or JPG (max. 1920x1080px)</p>
-                    </>
-                  )}
-                </div>
+                  + Add first client result
+                </button>
               </div>
+            ) : (
+              <div className="space-y-4">
+                {clientResultsList.map((item, idx) => (
+                  <div key={item.id} className="p-4 bg-slate-50/70 border border-slate-200/80 rounded-2xl space-y-3 relative">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-700">Client Result #{idx + 1}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteClientResult(item.id)}
+                        className="p-1 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                        title="Delete specific result"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
 
-              <div className="space-y-1.5">
-                <label className="block text-sm font-semibold text-slate-700">Testimonial</label>
-                <textarea
-                  rows={4}
-                  value={clientTestimonial}
-                  onChange={(e) => setClientTestimonial(e.target.value)}
-                  placeholder="Testimonial"
-                  className="w-full px-4 py-3.5 bg-white border border-slate-200 rounded-xl text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500 shadow-sm resize-none h-[120px]"
-                />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-semibold text-slate-700">Before / After photo</label>
+                        <div className="border border-dashed border-slate-200 rounded-xl p-3 flex flex-col items-center justify-center bg-white hover:bg-slate-50 transition-colors min-h-[120px] relative overflow-hidden group shadow-2xs">
+                          {item.photoUrl ? (
+                            <>
+                              <img
+                                src={item.photoUrl}
+                                onError={handleImageError}
+                                alt="Result"
+                                className="absolute inset-0 w-full h-full object-cover"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleClearClientResultPhoto(item.id)}
+                                className="absolute top-2 right-2 w-6 h-6 bg-white/95 rounded-full shadow-sm text-slate-600 hover:text-rose-500 flex items-center justify-center cursor-pointer transition-all z-10"
+                                title="Remove photo"
+                              >
+                                <X size={13} />
+                              </button>
+                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <input
+                                  id={'treatment-result-photo-change-' + item.id}
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={(ev) => {
+                                    const file = ev.target.files?.[0];
+                                    if (file) handleClientResultPhotoUpload(item.id, file);
+                                  }}
+                                  className="hidden"
+                                />
+                                <label
+                                  htmlFor={'treatment-result-photo-change-' + item.id}
+                                  className="px-3 py-1.5 bg-white text-slate-800 rounded-full text-xs font-bold shadow-md cursor-pointer hover:bg-slate-50 flex items-center gap-1.5"
+                                >
+                                  <UploadCloud size={13} />
+                                  <span>{uploadingTreatmentResultId === item.id ? 'Uploading...' : 'Change photo'}</span>
+                                </label>
+                              </div>
+                            </>
+                          ) : (
+                            <div className="flex flex-col items-center justify-center text-center w-full h-full">
+                              <input
+                                id={'treatment-result-photo-upload-' + item.id}
+                                type="file"
+                                accept="image/*"
+                                onChange={(ev) => {
+                                  const file = ev.target.files?.[0];
+                                  if (file) handleClientResultPhotoUpload(item.id, file);
+                                }}
+                                className="hidden"
+                              />
+                              <label
+                                htmlFor={'treatment-result-photo-upload-' + item.id}
+                                className="flex flex-col items-center justify-center cursor-pointer hover:opacity-80 transition-opacity w-full h-full"
+                              >
+                                <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 mb-1 shadow-2xs">
+                                  <UploadCloud size={15} />
+                                </div>
+                                <span className="text-xs font-semibold text-slate-700">
+                                  {uploadingTreatmentResultId === item.id ? 'Uploading to Supabase...' : 'Click to upload photo'}
+                                </span>
+                                <span className="text-[10px] text-slate-400 mt-0.5">PNG, JPG or WebP</span>
+                              </label>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-semibold text-slate-700">Testimonial</label>
+                        <textarea
+                          rows={4}
+                          value={item.testimonial}
+                          onChange={(e) => handleClientResultTestimonialChange(item.id, e.target.value)}
+                          placeholder="Client review or feedback after this treatment..."
+                          className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-pink-500/20 focus:border-pink-500 shadow-2xs resize-none h-[120px]"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
+            )}
           </div>
 
           {/* Section 4: Consultation & Payment options (Matching Photo 2 with iOS Switch) */}

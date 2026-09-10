@@ -4,7 +4,7 @@ import ImageUploadDropzone from '../common/ImageUploadDropzone';
 import EmptyState from '../EmptyState';
 import SlideOverDrawer from '../common/SlideOverDrawer';
 import { Merchant } from '../../types';
-import { useArticles, ArticleRecord, useClinics } from '../../hooks/useSupabaseData';
+import { useArticles, ArticleRecord, useClinics, handleImageError } from '../../hooks/useSupabaseData';
 
 interface SettingsTabProps {
   clinicId?: string;
@@ -114,9 +114,10 @@ export default function SettingsTab({
 
       setSavedSuccess(true);
       setTimeout(() => setSavedSuccess(false), 3000);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Failed to update clinic in Supabase:', err);
-      alert('Could not update clinic in Supabase: ' + (err?.message || JSON.stringify(err)));
+      const errMsg = err instanceof Error ? err.message : JSON.stringify(err);
+      alert('Could not update clinic in Supabase: ' + errMsg);
     } finally {
       setSavingSettings(false);
     }
@@ -185,9 +186,10 @@ export default function SettingsTab({
       }
 
       closeArticleDrawer();
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Failed to save article in Supabase:', err);
-      alert('Could not save the article to Supabase: ' + (err?.message || JSON.stringify(err)));
+      const errMsg = err instanceof Error ? err.message : JSON.stringify(err);
+      alert('Could not save the article to Supabase: ' + errMsg);
     } finally {
       setPublishingArticle(false);
     }
@@ -204,7 +206,7 @@ export default function SettingsTab({
   };
 
   return (
-    <form onSubmit={handleSave} className="space-y-6 max-w-5xl animate-in fade-in duration-200 pb-12">
+    <form onSubmit={handleSave} className="space-y-6 max-w-3xl animate-in fade-in duration-200 pb-12">
       {/* 1. BRANDING */}
       <div className="bg-white rounded-2xl border border-slate-100 shadow-xs p-6 space-y-5">
         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
@@ -491,7 +493,8 @@ export default function SettingsTab({
             {supabaseArticles.map((art: ArticleRecord) => (
               <div key={art.id} className="p-4 rounded-xl border border-slate-200/80 bg-slate-50/50 flex gap-3 group relative">
                 <img
-                  src={art.image || '/images/skincare-products.jpg'}
+                    onError={handleImageError}
+                    src={art.image || '/images/skincare-products.jpg'}
                   alt={art.title}
                   className="w-16 h-16 rounded-xl object-cover flex-shrink-0 border border-slate-200"
                 />

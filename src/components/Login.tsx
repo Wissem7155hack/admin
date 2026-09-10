@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabaseClient';
+import { sessionManager } from '../lib/sessionManager';
 import React, { useState, useEffect } from 'react';
 import {
   Wifi,
@@ -84,6 +85,7 @@ export default function Login({ onLogin }: LoginProps) {
         password === 'ieeeadmin'
       ) {
         localStorage.setItem('nexcore_auth', 'true');
+        await sessionManager.initializeSession('wiss-admin-id');
         onLogin();
         return;
       }
@@ -99,6 +101,7 @@ export default function Login({ onLogin }: LoginProps) {
         triggerError(error.message || 'Invalid credentials. Please try again.');
       } else if (data.session) {
         localStorage.setItem('nexcore_auth', 'true');
+        await sessionManager.initializeSession(data.session.user.id, data.session.access_token);
         onLogin();
       }
     } catch (err: any) {

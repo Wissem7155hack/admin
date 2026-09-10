@@ -149,17 +149,52 @@ export interface SignupBonus {
   products: string[];
 }
 
+export interface MembershipTreatment {
+  id: string;
+  name: string;
+  count: number;
+  unit: string;
+  description?: string;
+  photoUrl?: string;
+}
+
+export interface MembershipBenefitCard {
+  id: string;
+  title: string;
+  description: string;
+  icon?: string;
+}
+
 export interface MembershipRecord {
   id: string;
   name: string;
   price: number;
+  currency?: string;
   description: string;
+  subtitle?: string;
+  tagline?: string;
   imageUrl: string;
+  image_url?: string;
   commitmentEnabled: boolean;
+  commitment_enabled?: boolean;
   commitmentMonths: number;
+  commitment_months?: number;
+  interval?: string;
+  title?: string;
+  tier_name?: string;
+  monthly_price?: number;
+  perks?: string[];
   benefits: string[];
+  benefitCards?: MembershipBenefitCard[];
+  includedTreatments?: MembershipTreatment[];
+  treatmentsHeader?: string;
+  testimonials?: { photoUrl?: string; text: string }[];
   bonuses: SignupBonus[];
   hideFromShop?: boolean;
+  is_hidden?: boolean;
+  display_order?: number;
+  sort_order?: number;
+  clinic_id?: string;
 }
 
 export interface RewardPointsConfig {
@@ -178,3 +213,7 @@ export interface EducationArticle {
   link: string;
   publishedAt: string;
 }
+
+export * from './types/gdpr';
+export * from './types/routeState';
+

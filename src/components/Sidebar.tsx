@@ -15,6 +15,7 @@ import {
   Search,
   ArrowLeft,
   AlignJustify,
+  ShieldCheck,
 } from 'lucide-react';
 import { View, Merchant } from '../types';
 
@@ -100,9 +101,32 @@ export default function Sidebar({
       {/* Brand Title: Nexcore in white */}
       <div className="px-6 pt-7 pb-2.5 flex items-center justify-between">
         {!isCollapsed ? (
-          <span className="text-2xl font-black text-white tracking-tight">Nexcore</span>
+          <div className="flex items-center gap-2">
+            <img
+              src="/images/clinic's logo .png"
+              alt={currentWorkspaceName}
+              onError={(e) => {
+                e.currentTarget.style.display = 'none';
+                const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                if (fallback) fallback.style.display = 'block';
+              }}
+              className="h-8 max-w-[170px] object-contain rounded"
+            />
+            <span style={{ display: 'none' }} className="text-2xl font-black text-white tracking-tight">
+              Nexcore
+            </span>
+          </div>
         ) : (
-          <span className="text-2xl font-black text-white tracking-tight mx-auto">N</span>
+          <img
+            src="/images/clinic's logo .png"
+            alt="Logo"
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+              const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+              if (fallback) fallback.style.display = 'block';
+            }}
+            className="w-8 h-8 object-contain rounded mx-auto"
+          />
         )}
       </div>
 
@@ -254,11 +278,21 @@ export default function Sidebar({
         </div>
       )}
 
+      {/* Privacy & Cookie Settings Link */}
+      <button
+        type="button"
+        onClick={() => navigate('user_settings')}
+        className="flex items-center gap-3 px-6 py-2.5 text-xs font-semibold text-slate-400 hover:text-white border-t border-white/10 transition-colors cursor-pointer"
+      >
+        <ShieldCheck size={16} className="text-pink-400" />
+        {!isCollapsed && <span>Privacy & Cookies</span>}
+      </button>
+
       {/* Sign Out Button */}
       <button
         type="button"
         onClick={onSignOut}
-        className="flex items-center gap-3 px-6 py-4 text-sm font-bold text-slate-400 hover:text-white border-t border-white/10 transition-colors cursor-pointer"
+        className="flex items-center gap-3 px-6 py-3.5 text-sm font-bold text-slate-400 hover:text-white border-t border-white/10 transition-colors cursor-pointer"
       >
         <LogOut size={16} />
         {!isCollapsed && <span>Sign out</span>}

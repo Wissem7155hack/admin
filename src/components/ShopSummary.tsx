@@ -162,8 +162,15 @@ export default function ShopSummary({ clinicId }: ShopSummaryProps) {
       </div>
 
       {/* Live Transactions List */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-xs p-6">
-        <h3 className="text-sm font-bold text-slate-900 mb-4">Live Transactions Feed</h3>
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-xs p-5 max-w-xl w-full">
+        <div className="flex items-center justify-between gap-4 mb-4">
+          <h3 className="text-base sm:text-lg font-bold text-slate-900 leading-tight">Live Transactions Feed</h3>
+          {transactions.length > 5 && (
+            <span className="text-xs font-medium text-slate-500 leading-tight">
+              Showing 5 most recent
+            </span>
+          )}
+        </div>
         {transactions.length === 0 ? (
           <EmptyState
             title="No transactions available"
@@ -171,17 +178,17 @@ export default function ShopSummary({ clinicId }: ShopSummaryProps) {
           />
         ) : (
           <div className="divide-y divide-slate-100">
-            {transactions.map((tx) => (
-              <div key={tx.id} className="py-3 flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-bold text-slate-900">{tx.client_name || 'Walk-in Client'}</p>
-                  <p className="text-[11px] text-slate-400 capitalize">
+            {transactions.slice(0, 5).map((tx) => (
+              <div key={tx.id} className="py-3.5 flex items-center justify-between gap-4">
+                <div className="min-w-0 pr-2">
+                  <p className="text-base font-bold text-slate-900 leading-snug truncate">{tx.client_name || 'Walk-in Client'}</p>
+                  <p className="text-xs sm:text-sm text-slate-500 capitalize leading-snug truncate mt-0.5">
                     {tx.type.replace('_', ' ')} • via {tx.payment_method} • {new Date(tx.created_at).toLocaleDateString()}
                   </p>
                 </div>
-                <div className="text-right">
-                  <p className="text-xs font-black text-slate-900">${Number(tx.amount).toFixed(2)}</p>
-                  <span className="inline-block text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                <div className="text-right flex-shrink-0">
+                  <p className="text-base sm:text-lg font-black text-slate-900 leading-snug">${Number(tx.amount).toFixed(2)}</p>
+                  <span className="inline-block text-xs font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full leading-tight mt-1">
                     {tx.payment_status}
                   </span>
                 </div>

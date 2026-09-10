@@ -1,0 +1,373 @@
+/* iPhone Lock Screen CSS converted from SCSS */
+
+.iphone-lock-outer-scaler {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.iphone-lock-wrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.iphone-lock-wrapper * {
+  box-sizing: border-box;
+}
+
+.iphone-lock-wrapper .outside-border {
+  /* Image Used to Display the BG */
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
+  position: relative;
+  width: 212px;
+  height: 438px;
+  border: 0.6px solid rgba(255, 255, 255, 0.4);
+  border-radius: 35px;
+  box-shadow: 0 2.8px 2.2px rgba(0, 0, 0, 0.034),
+    0 6.7px 5.3px rgba(0, 0, 0, 0.048),
+    0 12.5px 10px rgba(0, 0, 0, 0.06),
+    0 22.3px 17.9px rgba(0, 0, 0, 0.072),
+    0 41.8px 33.4px rgba(0, 0, 0, 0.086),
+    0 100px 80px rgba(0, 0, 0, 0.12);
+}
+
+.iphone-lock-wrapper .silencer {
+  position: absolute;
+  background-color: white;
+  border-radius: 5px;
+  width: 2px;
+  height: 13px;
+  left: -2px;
+  top: 81.5px;
+  opacity: 0.8;
+}
+
+.iphone-lock-wrapper .volume-up,
+.iphone-lock-wrapper .volume-down {
+  position: absolute;
+  background-color: white;
+  border-radius: 5px;
+  height: 28px;
+  width: 1px;
+  left: -1.5px;
+  opacity: 0.8;
+}
+
+.iphone-lock-wrapper .volume-up {
+  top: 110px;
+}
+
+.iphone-lock-wrapper .volume-down {
+  top: 148px;
+}
+
+.iphone-lock-wrapper .button-on {
+  position: absolute;
+  background-color: white;
+  border-radius: 5px;
+  height: 45px;
+  width: 2px;
+  right: -2px;
+  opacity: 0.8;
+  top: 121px;
+}
+
+.iphone-lock-wrapper .inside-border {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  border: 6px solid black;
+  border-radius: 35px;
+  overflow: hidden;
+  color: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.iphone-lock-wrapper .camera {
+  display: flex;
+  justify-content: center;
+  position: absolute;
+  width: 76px;
+  height: 20px;
+  background-color: black;
+  border-bottom-left-radius: 15px;
+  border-bottom-right-radius: 15px;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+}
+
+.iphone-lock-wrapper .camera-dot {
+  position: absolute;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  width: 5px;
+  height: 5px;
+  left: 12px;
+  top: 5px;
+}
+
+.iphone-lock-wrapper .camera-dot-2 {
+  position: absolute;
+  background-color: #fff;
+  border-radius: 50%;
+  width: 4px;
+  height: 4px;
+  opacity: 0.3;
+  filter: blur(1px);
+}
+
+.iphone-lock-wrapper .camera-dot-3 {
+  position: absolute;
+  background-color: #000;
+  border-radius: 50%;
+  width: 1px;
+  height: 1px;
+  opacity: 0.7;
+}
+
+.iphone-lock-wrapper .camera-speaker {
+  position: absolute;
+  background-color: #fff;
+  width: 28px;
+  height: 1px;
+  border-radius: 20px;
+  top: 3px;
+  opacity: 0.2;
+}
+
+.iphone-lock-wrapper .lock {
+  position: absolute;
+  width: 12px;
+  height: 10px;
+  top: 34px;
+  background-color: white;
+  border-radius: 2px;
+}
+
+.iphone-lock-wrapper .lock-locked {
+  position: absolute;
+  width: 9px;
+  height: 15px;
+  border: 1.5px solid white;
+  border-radius: 20px;
+  top: -7px;
+  left: 1.7px;
+}
+
+.iphone-lock-wrapper .time {
+  position: absolute;
+  top: 46px;
+  font-size: 42px;
+  font-weight: 100;
+  letter-spacing: -1px;
+  color: #fff;
+  user-select: none;
+}
+
+.iphone-lock-wrapper .date {
+  position: absolute;
+  top: 92px;
+  font-size: 10px;
+  font-weight: 200;
+  color: #fff;
+  user-select: none;
+}
+
+.iphone-lock-wrapper .t-r-info {
+  display: flex;
+  gap: 5px;
+  position: absolute;
+  right: 17px;
+  top: 8px;
+  font-size: 10px;
+  color: #fff;
+}
+
+.iphone-lock-wrapper .battery {
+  position: relative;
+  margin-top: 4px;
+  height: 7px;
+  width: 14px;
+  border: 0.7px solid rgba(255, 255, 255, 0.709);
+  border-radius: 2px;
+}
+
+.iphone-lock-wrapper .battery .bar {
+  width: calc(80% - 2px);
+  height: calc(100% - 2px);
+  background-color: #fff;
+  margin: 1px;
+  border-radius: 1px;
+}
+
+.iphone-lock-wrapper .battery .dot {
+  position: absolute;
+  right: -2px;
+  top: 1.5px;
+  width: 1px;
+  height: 3px;
+  background-color: rgba(255, 255, 255, 0.709);
+  border-radius: 2px;
+}
+
+.iphone-lock-wrapper .torch-outter {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  position: absolute;
+  width: 23px;
+  height: 23px;
+  background-color: rgba(255, 255, 255, 0.202);
+  left: 29px;
+  bottom: 30px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform 250ms ease;
+  backdrop-filter: blur(4px);
+}
+
+.iphone-lock-wrapper .torch-outter:hover {
+  transform: scale(1.3);
+}
+
+.iphone-lock-wrapper .torch-outter .light {
+  width: 6px;
+  height: 1px;
+  background-color: #fff;
+  border-radius: 3px;
+}
+
+.iphone-lock-wrapper .torch-outter .top {
+  margin-top: 1px;
+  width: 6px;
+  height: 4px;
+  background-color: #fff;
+  border-top-left-radius: 0.5px;
+  border-top-right-radius: 0.5px;
+  border-bottom-left-radius: 50%;
+  border-bottom-right-radius: 50%;
+}
+
+.iphone-lock-wrapper .torch-outter .switch-section {
+  margin-top: -1px;
+  width: 3px;
+  height: 9px;
+  background-color: #fff;
+  border-radius: 1px;
+}
+
+.iphone-lock-wrapper .torch-outter .switch {
+  position: absolute;
+  top: 10px;
+  left: 10.5px;
+  border-radius: 50%;
+  width: 2px;
+  height: 4px;
+  background-color: #000;
+}
+
+.iphone-lock-wrapper .torch-outter .switch .dot {
+  position: absolute;
+  bottom: 0.4px;
+  left: 0.4px;
+  width: 1.2px;
+  height: 1.2px;
+  background-color: #fff;
+  border-radius: 50%;
+}
+
+.iphone-lock-wrapper .camera-outter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  width: 23px;
+  height: 23px;
+  background-color: rgba(255, 255, 255, 0.202);
+  right: 29px;
+  bottom: 30px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform 250ms ease;
+  backdrop-filter: blur(4px);
+}
+
+.iphone-lock-wrapper .camera-outter:hover {
+  transform: scale(1.3);
+}
+
+.iphone-lock-wrapper .camera-outter .box {
+  width: 12px;
+  height: 8px;
+  background-color: #fff;
+  border-radius: 1px;
+}
+
+.iphone-lock-wrapper .camera-outter .eye {
+  position: absolute;
+  background-color: #fff;
+  width: 5px;
+  height: 2px;
+  top: 6px;
+  border-top-left-radius: 1px;
+  border-top-right-radius: 1px;
+}
+
+.iphone-lock-wrapper .camera-outter .circle {
+  position: absolute;
+  top: 9px;
+  width: 5px;
+  height: 5px;
+  border: 1px solid #000;
+  border-radius: 50%;
+}
+
+.iphone-lock-wrapper .camera-outter .dot {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  top: 7px;
+  right: 5.2px;
+  background-color: #000;
+  border-radius: 50%;
+  transform: scale(0.2);
+}
+
+.iphone-lock-wrapper .bottom-line {
+  position: absolute;
+  height: 2px;
+  width: 80px;
+  background-color: #fff;
+  bottom: 6px;
+  border-radius: 2px;
+  opacity: 0.8;
+}
+
+.iphone-lock-wrapper .iphone-screen-content {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  z-index: 10;
+}

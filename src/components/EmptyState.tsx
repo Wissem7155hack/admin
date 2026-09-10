@@ -1,3 +1,4 @@
+import { handleImageError } from '../hooks/useSupabaseData';
 
 
 interface EmptyStateProps {
@@ -17,6 +18,7 @@ export default function EmptyState({ title, description, action, className = '' 
         <img
           src="/images/empty-state-image.webp"
           alt="Empty state"
+          onError={handleImageError}
           className="w-full h-full object-contain filter drop-shadow-xs"
           loading="lazy"
         />

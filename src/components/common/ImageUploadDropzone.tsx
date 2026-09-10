@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Upload, X, Loader2, Check } from 'lucide-react';
-import { uploadClinicAsset } from '../../hooks/useSupabaseData';
+import { uploadToBucket, handleImageError } from '../../hooks/useSupabaseData';
 
 interface ImageUploadDropzoneProps {
   label?: string;
@@ -10,6 +10,7 @@ interface ImageUploadDropzoneProps {
   aspectRatio?: 'square' | 'video' | 'banner' | 'auto';
   className?: string;
   storageFolder?: string;
+  bucketName?: 'clinic-assets' | 'merchant-assets' | 'offer-media' | 'treatment-media' | 'membership-media' | 'team-and-blog';
 }
 
 export const ImageUploadDropzone: React.FC<ImageUploadDropzoneProps> = ({
@@ -20,11 +21,13 @@ export const ImageUploadDropzone: React.FC<ImageUploadDropzoneProps> = ({
   aspectRatio = 'auto',
   className = '',
   storageFolder = 'clinic-assets',
+  bucketName = 'clinic-assets',
 }) => {
   const [preview, setPreview] = useState<string>(currentImage || '');
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploaded, setUploaded] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -42,15 +45,18 @@ export const ImageUploadDropzone: React.FC<ImageUploadDropzoneProps> = ({
     setUploading(true);
 
     try {
-      // Upload directly to Supabase storage bucket 'clinic-assets'
-      const publicUrl = await uploadClinicAsset(file, storageFolder);
+      setUploadError(null);
+      // Upload to target Supabase storage bucket and obtain public CDN URL
+      const publicUrl = await uploadToBucket(bucketName, file, storageFolder);
       setPreview(publicUrl);
       setUploaded(true);
       if (onImageChange) onImageChange(publicUrl);
       setTimeout(() => setUploaded(false), 2000);
-    } catch (err) {
-      console.warn('Supabase storage upload failed, keeping local preview:', err);
-      if (onImageChange) onImageChange(localUrl);
+    } catch (err: any) {
+      console.error(`Supabase storage upload failed on bucket '${bucketName}':`, err);
+      setUploadError(err?.message || 'Storage upload failed. Please verify file type and size.');
+      // Never persist ephemeral local blob URLs to database
+      setPreview(currentImage || '');
     } finally {
       setUploading(false);
     }
@@ -96,6 +102,7 @@ export const ImageUploadDropzone: React.FC<ImageUploadDropzoneProps> = ({
   return (
     <div className={className}>
       {label && <label className="block text-xs font-semibold text-slate-700 mb-1.5">{label}</label>}
+      {uploadError && <p className="text-[11px] font-semibold text-rose-600 mb-1.5">{uploadError}</p>}
 
       <div
         onClick={() => !uploading && fileInputRef.current?.click()}
@@ -119,7 +126,7 @@ export const ImageUploadDropzone: React.FC<ImageUploadDropzoneProps> = ({
 
         {preview ? (
           <div className="absolute inset-0 w-full h-full group">
-            <img src={preview} alt="Upload preview" className="w-full h-full object-cover" />
+            <img src={preview} alt="Upload preview" onError={handleImageError} className="w-full h-full object-cover" />
             
             {uploading && (
               <div className="absolute inset-0 bg-slate-900/60 flex flex-col items-center justify-center text-white gap-2 backdrop-blur-xs">

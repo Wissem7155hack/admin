@@ -21,6 +21,8 @@ const TABS: AppBuilderTab[] = [
 interface AppBuilderProps {
   merchantName?: string;
   currentMerchant?: Merchant;
+  activeTab?: AppBuilderTab;
+  onTabChange?: (tab: AppBuilderTab) => void;
   onOpenViewApp?: () => void;
   onOpenQrScan?: () => void;
   onUpdateClinic?: (updated: Partial<Merchant>) => void;
@@ -29,10 +31,22 @@ interface AppBuilderProps {
 export default function AppBuilder({
   merchantName = 'My Clinic',
   currentMerchant,
+  activeTab,
+  onTabChange,
   onOpenViewApp,
   onUpdateClinic,
 }: AppBuilderProps) {
-  const [tab, setTab] = useState<AppBuilderTab>('Products');
+  const [internalTab, setInternalTab] = useState<AppBuilderTab>('Products');
+  const tab = activeTab || internalTab;
+
+  const handleTabSelect = (selectedTab: AppBuilderTab) => {
+    if (onTabChange) {
+      onTabChange(selectedTab);
+    } else {
+      setInternalTab(selectedTab);
+    }
+  };
+
   const [viewAppOpen, setViewAppOpen] = useState(false);
   const [openMembershipComposer, setOpenMembershipComposer] = useState(false);
 
@@ -47,7 +61,7 @@ export default function AppBuilder({
               return (
                 <button
                   key={t}
-                  onClick={() => setTab(t)}
+                  onClick={() => handleTabSelect(t)}
                   className={'relative pb-3 transition-all tracking-tight cursor-pointer ' + (active ? 'text-slate-900 font-bold border-b-2 border-pink-500' : 'text-slate-400 hover:text-slate-700 font-medium')}
                 >
                   <span className="text-[14px]">{t}</span>
@@ -82,6 +96,7 @@ export default function AppBuilder({
         {tab === 'Membership' && (
           <AppBuilderMembership
             clinicId={currentMerchant?.id}
+            clinicName={currentMerchant?.name || merchantName}
             openComposer={openMembershipComposer}
             onComposerChange={setOpenMembershipComposer}
           />

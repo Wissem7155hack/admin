@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { View, Merchant } from './types';
+import { useState, useEffect, useCallback } from 'react';
+import { View, Merchant, AppBuilderTab } from './types';
 import Sidebar from './components/Sidebar';
 import TopNavbar from './components/TopNavbar';
 import Login from './components/Login';
@@ -13,7 +13,14 @@ import AppBuilder from './components/AppBuilder/AppBuilder';
 import UserSettings from './components/UserSettings';
 import QrScanModal from './components/QrScanModal';
 import ViewAppModal from './components/ViewAppModal';
+import CookieConsentBanner from './components/CookieConsentBanner';
+import PrivacySettingsModal from './components/PrivacySettingsModal';
+import SessionTimeoutModal from './components/SessionTimeoutModal';
 import { useClinics } from './hooks/useSupabaseData';
+import { useSessionManager } from './hooks/useSessionManager';
+import { useCookieConsent } from './hooks/useCookieConsent';
+import { useEncryptedRouting } from './hooks/useEncryptedRouting';
+import { supabase } from './lib/supabaseClient';
 
 const initialMerchants: Merchant[] = [
   {
@@ -62,9 +69,62 @@ export function App() {
     updateClinicStatus,
   } = useClinics();
 
-  const [currentView, setCurrentView] = useState<View>('agency');
   const [merchants, setMerchants] = useState<Merchant[]>(initialMerchants);
   const [currentMerchant, setCurrentMerchant] = useState<Merchant>(initialMerchants[0]);
+
+  // Callback to sync merchant state when URL token is decrypted
+  const handleStateDecrypted = useCallback(
+    (decryptedState: { merchantId?: string }) => {
+      if (decryptedState.merchantId) {
+        const found = merchants.find((m) => m.id === decryptedState.merchantId);
+        if (found) {
+          setCurrentMerchant(found);
+        }
+      }
+    },
+    [merchants]
+  );
+
+  // Cryptographically Encrypted URL Routing State Hook
+  const {
+    currentView,
+    appBuilderTab,
+    activeModal,
+    navigateSecure,
+    setAppBuilderTab,
+    setActiveModal,
+  } = useEncryptedRouting({
+    merchants,
+    onStateDecrypted: handleStateDecrypted,
+  });
+
+  // Cookie Consent state
+  const { isPreferencesOpen, closePreferences } = useCookieConsent();
+
+  // Session Manager & Idle Timeout handling
+  const { isWarningOpen, warningSeconds, keepSessionAlive, performSignOut } = useSessionManager({
+    isAuthenticated,
+    onAutoLogout: () => {
+      setIsAuthenticated(false);
+      navigateSecure({ view: 'agency', merchantId: undefined });
+    },
+  });
+
+  // Keep React state in sync with Supabase Auth session
+  useEffect(() => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        setIsAuthenticated(true);
+      } else if (event === 'SIGNED_OUT') {
+        setIsAuthenticated(false);
+        navigateSecure({ view: 'agency', merchantId: undefined });
+      }
+    });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, [navigateSecure]);
 
   // Sync live Supabase clinics when available
   useEffect(() => {
@@ -77,23 +137,23 @@ export function App() {
     }
   }, [liveClinics]);
 
-  // Global Modals - closed by default
-  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
-  const [isViewAppModalOpen, setIsViewAppModalOpen] = useState(false);
-
   const handleSelectMerchant = (merchant: Merchant) => {
     setCurrentMerchant(merchant);
-    setCurrentView('merchant');
+    navigateSecure({
+      view: 'merchant',
+      merchantId: merchant.id,
+    });
   };
 
   const handleSwitchToAgency = () => {
-    setCurrentView('agency');
+    navigateSecure({
+      view: 'agency',
+      merchantId: undefined,
+    });
   };
 
-  const handleSignOut = () => {
-    localStorage.removeItem('nexcore_auth');
-    setCurrentView('agency');
-    setIsAuthenticated(false);
+  const handleSignOut = async () => {
+    await performSignOut();
   };
 
   const handleAddMerchant = async (newMerchantData: Partial<Merchant>) => {
@@ -159,12 +219,16 @@ export function App() {
 
   if (!isAuthenticated) {
     return (
-      <Login
-        onLogin={() => {
-          localStorage.setItem('nexcore_auth', 'true');
-          setIsAuthenticated(true);
-        }}
-      />
+      <>
+        <Login
+          onLogin={() => {
+            localStorage.setItem('nexcore_auth', 'true');
+            setIsAuthenticated(true);
+          }}
+        />
+        {/* GDPR Cookie Consent Banner visible on login screen */}
+        <CookieConsentBanner />
+      </>
     );
   }
 
@@ -177,8 +241,8 @@ export function App() {
       <Sidebar
         view={currentView}
         currentView={currentView}
-        setView={setCurrentView}
-        onNavigate={setCurrentView}
+        setView={(v: View) => navigateSecure({ view: v })}
+        onNavigate={(v: View) => navigateSecure({ view: v })}
         isAgency={isAgencyView}
         merchants={merchants}
         currentMerchant={currentMerchant}
@@ -193,8 +257,8 @@ export function App() {
         <TopNavbar
           greeting={isAgencyView ? '' : `${currentMerchant?.name || ''} 👋🏻`}
           userName={isAgencyView ? '' : currentMerchant?.name || ''}
-          onOpenQrScan={() => setIsQrModalOpen(true)}
-          onOpenUserSettings={() => setCurrentView('user_settings')}
+          onOpenQrScan={() => setActiveModal('qr')}
+          onOpenUserSettings={() => navigateSecure({ view: 'user_settings' })}
         />
 
         {/* View Router */}
@@ -238,8 +302,10 @@ export function App() {
               <AppBuilder
                 merchantName={currentMerchant.name}
                 currentMerchant={currentMerchant}
-                onOpenViewApp={() => setIsViewAppModalOpen(true)}
-                onOpenQrScan={() => setIsQrModalOpen(true)}
+                activeTab={appBuilderTab}
+                onTabChange={(tab: AppBuilderTab) => setAppBuilderTab(tab)}
+                onOpenViewApp={() => setActiveModal('view_app')}
+                onOpenQrScan={() => setActiveModal('qr')}
                 onUpdateClinic={(updated) => {
                   setMerchants((prev) =>
                     prev.map((m) => (m.id === currentMerchant.id ? { ...m, ...updated } : m))
@@ -254,18 +320,37 @@ export function App() {
         </main>
       </div>
 
-      {/* Modals - conditionally rendered */}
-      {isQrModalOpen && (
-        <QrScanModal
-          isOpen={isQrModalOpen}
-          onClose={() => setIsQrModalOpen(false)}
+      {/* GDPR Cookie Consent Banner */}
+      <CookieConsentBanner />
+
+      {/* Privacy Preference Center Modal */}
+      {isPreferencesOpen && (
+        <PrivacySettingsModal
+          isOpen={isPreferencesOpen}
+          onClose={closePreferences}
         />
       )}
 
-      {isViewAppModalOpen && (
+      {/* Session Inactivity Timeout Warning Modal */}
+      <SessionTimeoutModal
+        isOpen={isWarningOpen}
+        remainingSeconds={warningSeconds}
+        onStayLoggedIn={keepSessionAlive}
+        onSignOut={handleSignOut}
+      />
+
+      {/* Modals - synced to encrypted route state */}
+      {activeModal === 'qr' && (
+        <QrScanModal
+          isOpen={true}
+          onClose={() => setActiveModal(null)}
+        />
+      )}
+
+      {activeModal === 'view_app' && (
         <ViewAppModal
-          isOpen={isViewAppModalOpen}
-          onClose={() => setIsViewAppModalOpen(false)}
+          isOpen={true}
+          onClose={() => setActiveModal(null)}
           clinicName={currentMerchant?.name}
         />
       )}

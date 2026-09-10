@@ -83,7 +83,7 @@ export const SlideOverDrawer: React.FC<SlideOverDrawerProps> = ({
 
       {/* Drawer panel with rounded-l-3xl matching photo 1, buttery smooth slide */}
       <div
-        className={`relative z-10 w-full ${maxWidth} bg-white h-screen shadow-2xl rounded-l-3xl flex flex-col justify-between border-l border-slate-100 transform transition-transform duration-250 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+        className={`relative z-10 w-full max-w-full ${maxWidth} bg-white h-screen shadow-2xl rounded-l-3xl flex flex-col justify-between border-l border-slate-100 transform transition-transform duration-250 ease-[cubic-bezier(0.16,1,0.3,1)] ${
           visible ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
